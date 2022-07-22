@@ -1,0 +1,605 @@
+---
+title: "Técnicas de Reamostragem"
+output:
+  html_document:
+    df_print: paged
+date: ''
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Métodos de Downsample
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(tidymodels)
+library(janitor)
+library(stringr)
+library(vip)
+library(probably)
+library(gt)
+library(ggplot2)
+library(patchwork)
+library(themis)
+dados <- readRDS("dados_treino.rds")
+```
+
+### DownSample
+
+```{r,echo=FALSE,eval=FALSE}
+data <- dados %>% 
+  mutate(saturacao2 = case_when( # saturation
+      saturacao == "sim" ~ 1,
+      saturacao == "não" ~ 0,
+      saturacao =="ignorado" ~ 2,
+      TRUE ~ 3)
+    ) %>%
+    mutate(diarreia2 = case_when( # diarrhea
+      diarreia == "sim" ~ 1,
+      diarreia =="não" ~ 0,
+      diarreia == "ignorado" ~ 2,
+      TRUE ~ 3)
+    ) 
+
+objeto <- data %>% select(diarreia2,saturacao2)
+
+matrix <- distance(objeto)
+
+
+ds_rec <- recipe(classi_fin ~ diarreia2 + saturacao2, data = data) %>%
+  step_downsample(classi_fin) %>%
+  prep()
+    
+
+g1 <- data %>% ggplot(aes(diarreia2, fill = classi_fin)) +
+     geom_bar() + labs(title = "Without -Sample")
+
+g2<- juice(ds_rec) %>%  ggplot(aes(diarreia2, fill = classi_fin)) +
+     geom_bar() + labs(title = "With Dowsample")
+
+# g1/g2
+```
+```{r}
+library(recipes)
+library(modeldata)
+data(hpc_data)
+
+hpc_data0 <- hpc_data %>%
+  select(-protocol, -day)
+
+orig <- count(hpc_data0, class, name = "orig")
+# orig
+#> # A tibble: 4 × 2
+#>   class  orig
+#>   <fct> <int>
+#> 1 VF     2211
+#> 2 F      1347
+#> 3 M       514
+#> 4 L       259
+
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  # Bring the majority levels down to about 1000 each
+  # 1000/259 is approx 3.862
+  step_downsample(class, under_ratio = 3.862) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+# training
+#> # A tibble: 4 × 2
+#>   class training
+#>   <fct>    <int>
+#> 1 VF        1000
+#> 2 F         1000
+#> 3 M          514
+#> 4 L          259
+
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+# baked
+#> # A tibble: 4 × 2
+#>   class baked
+#>   <fct> <int>
+#> 1 VF     2211
+#> 2 F      1347
+#> 3 M       514
+#> 4 L       259
+
+# Note that if the original data contained more rows than the
+# target n (= ratio * majority_n), the data are left alone:
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+#> # A tibble: 4 × 4
+#>   class  orig training baked
+#>   <fct> <int>    <int> <int>
+#> 1 VF     2211     1000  2211
+#> 2 F      1347     1000  1347
+#> 3 M       514      514   514
+#> 4 L       259      259   259
+
+
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without downsample")
+
+g2 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_downsample(class) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With downsample")
+
+g1
+g2
+```
+
+#### Métricas modelo XGboost
+
+```{r}
+readRDS("metricas_downsample.rds")
+```
+
+
+### NearMiss
+
+```{r,echo=FALSE}
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  # Bring the majority levels down to about 1000 each
+  # 1000/259 is approx 3.862
+  step_nearmiss(class, under_ratio = 3.862) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without NEARMISS") +
+  xlim(c(1, 15)) +
+  ylim(c(1, 15))
+
+g2 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_nearmiss(class) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With NEARMISS") +
+  xlim(c(1, 15)) +
+  ylim(c(1, 15))
+
+g1
+g2
+```
+
+#### Métricas modelo XGboost
+
+```{r}
+readRDS("metricas_nearmiss.rds")
+```
+
+
+### Links de Tomek
+
+```{r}
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  step_tomek(class) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+
+# 
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without Tomek") +
+  xlim(c(1, 15)) +
+  ylim(c(1, 15))
+
+g2<- recipe(class ~ x + y, data = circle_example) %>%
+  step_tomek(class) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With Tomek") +
+  xlim(c(1, 15)) +
+  ylim(c(1, 15))
+
+g1
+g2
+```
+
+#### Métricas modelo XGboost
+
+```{r}
+readRDS("metricas_tomek.rds")
+```
+
+## Métodos de Up-Sample
+
+### Upsample
+
+```{r,echo=FALSE}
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  # Bring the minority levels up to about 1000 each
+  # 1000/2211 is approx 0.4523
+  step_upsample(class, over_ratio = 0.4523) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+#> # A tibble: 4 × 2
+#>   class training
+#>   <fct>    <int>
+#> 1 VF        2211
+#> 2 F         1347
+#> 3 M         1000
+#> 4 L         1000
+
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+#> # A tibble: 4 × 2
+#>   class baked
+#>   <fct> <int>
+#> 1 VF     2211
+#> 2 F      1347
+#> 3 M       514
+#> 4 L       259
+
+# Note that if the original data contained more rows than the
+# target n (= ratio * majority_n), the data are left alone:
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+#> # A tibble: 4 × 4
+#>   class  orig training baked
+#>   <fct> <int>    <int> <int>
+#> 1 VF     2211     2211  2211
+#> 2 F      1347     1347  1347
+#> 3 M       514     1000   514
+#> 4 L       259     1000   259
+
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without upsample")
+
+g2 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_upsample(class) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_jitter(width = 0.1, height = 0.1) +
+  labs(title = "With upsample (with jittering)")
+```
+
+#### Métricas modelo XGboost
+
+```{r}
+readRDS("metricas_upsample.rds")
+```
+
+### Smote
+
+```{r,echo=FALSE}
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  # Bring the minority levels up to about 1000 each
+  # 1000/2211 is approx 0.4523
+  step_smote(class, over_ratio = 0.4523) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+#> # A tibble: 4 × 2
+#>   class training
+#>   <fct>    <int>
+#> 1 VF        2211
+#> 2 F         1347
+#> 3 M         1000
+#> 4 L         1000
+
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+#> # A tibble: 4 × 2
+#>   class baked
+#>   <fct> <int>
+#> 1 VF     2211
+#> 2 F      1347
+#> 3 M       514
+#> 4 L       259
+
+# Note that if the original data contained more rows than the
+# # target n (= ratio * majority_n), the data are left alone:
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+#> # A tibble: 4 × 4
+#>   class  orig training baked
+#>   <fct> <int>    <int> <int>
+#> 1 VF     2211     2211  2211
+#> 2 F      1347     1347  1347
+#> 3 M       514     1000   514
+#> 4 L       259     1000   259
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without SMOTE")
+
+g2 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_smote(class) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With SMOTE")
+
+g1
+g2
+```
+
+#### Métricas modelo XGboost
+
+```{r}
+readRDS("metricas_smote.rds")
+```
+
+### SMOTE NC 
+
+#### Métricas modelo XGboost
+
+```{r}
+readRDS("metricas_smoteNC.rds")
+```
+
+### ADASYN 
+
+```{r}
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  # Bring the minority levels up to about 1000 each
+  # 1000/2211 is approx 0.4523
+  step_adasyn(class, over_ratio = 0.4523) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+#> # A tibble: 4 × 2
+#>   class training
+#>   <fct>    <int>
+#> 1 VF        2211
+#> 2 F         1347
+#> 3 M         1000
+#> 4 L         1000
+
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+#> # A tibble: 4 × 2
+#>   class baked
+#>   <fct> <int>
+#> 1 VF     2211
+#> 2 F      1347
+#> 3 M       514
+#> 4 L       259
+
+# Note that if the original data contained more rows than the
+# target n (= ratio * majority_n), the data are left alone:
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+#> # A tibble: 4 × 4
+#>   class  orig training baked
+#>   <fct> <int>    <int> <int>
+#> 1 VF     2211     2211  2211
+#> 2 F      1347     1347  1347
+#> 3 M       514     1000   514
+#> 4 L       259     1000   259
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without ADASYN")
+
+g2 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_adasyn(class) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With ADASYN")
+
+g1
+g2
+```
+
+#### Métricas modelo XGboost
+
+```{r}
+readRDS("metricas_adasyn.rds")
+```
+
+### Borderline
+
+```{r}
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  # Bring the minority levels up to about 1000 each
+  # 1000/2211 is approx 0.4523
+  step_bsmote(class, over_ratio = 0.4523) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+#> # A tibble: 4 × 2
+#>   class training
+#>   <fct>    <int>
+#> 1 VF        2211
+#> 2 F         1347
+#> 3 M         1000
+#> 4 L         1000
+
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+#> # A tibble: 4 × 2
+#>   class baked
+#>   <fct> <int>
+#> 1 VF     2211
+#> 2 F      1347
+#> 3 M       514
+#> 4 L       259
+
+# Note that if the original data contained more rows than the
+# target n (= ratio * majority_n), the data are left alone:
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+#> # A tibble: 4 × 4
+#>   class  orig training baked
+#>   <fct> <int>    <int> <int>
+#> 1 VF     2211     2211  2211
+#> 2 F      1347     1347  1347
+#> 3 M       514     1000   514
+#> 4 L       259     1000   259
+
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without SMOTE")
+
+
+g2 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_bsmote(class, all_neighbors = FALSE) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With borderline-SMOTE, all_neighbors = FALSE")
+
+g3 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_bsmote(class, all_neighbors = TRUE) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With borderline-SMOTE, all_neighbors = TRUE")
+
+g1
+g2
+g3
+```
+
+#### Métricas modelo XGboost
+
+##### Method 1
+
+```{r}
+readRDS("metricas_bsmotef.rds")
+```
+
+##### Method 2
+
+```{r}
+readRDS("metricas_bsmotet.rds")
+```
+
+### ROSE 
+
+```{r}
+hpc_data0 <- hpc_data %>%
+  mutate(class = factor(class == "VF", labels = c("not VF", "VF"))) %>%
+  select(-protocol, -day)
+
+orig <- count(hpc_data0, class, name = "orig")
+#> # A tibble: 2 × 2
+#>   class   orig
+#>   <fct>  <int>
+#> 1 not VF  2120
+#> 2 VF      2211
+
+up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+  step_rose(class) %>%
+  prep()
+
+training <- up_rec %>%
+  bake(new_data = NULL) %>%
+  count(class, name = "training")
+#> # A tibble: 2 × 2
+#>   class  training
+#>   <fct>     <int>
+#> 1 not VF     2235
+#> 2 VF         2187
+
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec %>%
+  bake(new_data = hpc_data0) %>%
+  count(class, name = "baked")
+#> # A tibble: 2 × 2
+#>   class  baked
+#>   <fct>  <int>
+#> 1 not VF  2120
+#> 2 VF      2211
+
+# orig %>%
+#   left_join(training, by = "class") %>%
+#   left_join(baked, by = "class")
+#> # A tibble: 2 × 4
+#>   class   orig training baked
+#>   <fct>  <int>    <int> <int>
+#> 1 not VF  2120     2235  2120
+#> 2 VF      2211     2187  2211
+
+
+g1 <- ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without ROSE")
+
+g2 <- recipe(class ~ x + y, data = circle_example) %>%
+  step_rose(class) %>%
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With ROSE")
+
+g1
+g2
+```
+
+#### Métricas Modelo XGboost
+
+```{r}
+
+```
