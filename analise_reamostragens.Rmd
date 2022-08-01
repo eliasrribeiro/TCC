@@ -7,7 +7,7 @@ date: ''
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
 ```
 
 ## Métodos de Downsample
@@ -22,47 +22,76 @@ library(gt)
 library(ggplot2)
 library(patchwork)
 library(themis)
-dados <- readRDS("dados_treino.rds")
+library(recipes)
+library(modeldata)
+
+dados <- readRDS("dados_newtest.rds")
+
+data <- dados  %>% 
+  filter(as.Date(DT_SIN_PRI,format="%d/%m/%Y") < as.Date("01-12-2021",format="%d-%m-%Y")) %>% # 37.847 points
+  mutate(classi_fin = as.factor(case_when(
+    CLASSI_FIN == 1 ~ "não-covid",
+    CLASSI_FIN == 2 ~ "não-covid",
+    CLASSI_FIN == 3 ~ "não-covid",
+    CLASSI_FIN == 5 ~ "covid-19",
+    TRUE ~ NA_character_))
+  ) %>% 
+  filter(!is.na(classi_fin)) %>% 
+  mutate(dt_notific = as.Date(DT_NOTIFIC, format = "%d/%m/%Y"),
+         dt_sint = as.Date(DT_SIN_PRI, format = "%d/%m/%Y"),
+         dt_interna = as.Date(DT_INTERNA, format = "%d/%m/%Y"),
+         dt_pcr = as.Date(DT_PCR, format = "%d/%m/%Y"),
+         dt_entuti  = as.Date(DT_ENTUTI,  format = "%d/%m/%Y"),
+         dt_saiduti = as.Date(DT_SAIDUTI, format = "%d/%m/%Y"),
+         dt_evoluca = as.Date(DT_EVOLUCA, format = "%d/%m/%Y"),
+         dt_encerra = as.Date(DT_ENCERRA, format = "%d/%m/%Y"),
+         dt_digita = as.Date(DT_DIGITA, format = "%d/%m/%Y")
+  ) %>% 
+  mutate(
+    tempo_sintomas_hosp = as.numeric(dt_interna - dt_sint),
+    tempo_sintomas_notific = as.numeric(dt_notific - dt_sint),
+    tempo_uti = as.numeric(dt_saiduti - dt_entuti),
+    tempo_sint_evolucao = as.numeric(dt_evoluca - dt_sint)
+  ) %>% 
+  select(idade,tempo_sintomas_notific,classi_fin) %>% 
+  drop_na()
+
 ```
 
 ### DownSample
 
-```{r,echo=FALSE,eval=FALSE}
-data <- dados %>% 
-  mutate(saturacao2 = case_when( # saturation
-      saturacao == "sim" ~ 1,
-      saturacao == "não" ~ 0,
-      saturacao =="ignorado" ~ 2,
-      TRUE ~ 3)
-    ) %>%
-    mutate(diarreia2 = case_when( # diarrhea
-      diarreia == "sim" ~ 1,
-      diarreia =="não" ~ 0,
-      diarreia == "ignorado" ~ 2,
-      TRUE ~ 3)
-    ) 
+```{r,echo=TRUE}
 
-objeto <- data %>% select(diarreia2,saturacao2)
-
-matrix <- distance(objeto)
+# objeto <- data %>% select(diarreia2,saturacao2)
+# 
+# matrix <- distance(objeto)
 
 
-ds_rec <- recipe(classi_fin ~ diarreia2 + saturacao2, data = data) %>%
+# ds_rec <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+#   step_downsample(classi_fin) %>%
+#   prep()
+#     
+# new_data <- juice(data,ds_rec)
+
+
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Without downsample")
+
+
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   step_downsample(classi_fin) %>%
-  prep()
-    
+  prep() %>%
+  bake(new_data = NULL) %>%
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With downsample")
 
-g1 <- data %>% ggplot(aes(diarreia2, fill = classi_fin)) +
-     geom_bar() + labs(title = "Without -Sample")
-
-g2<- juice(ds_rec) %>%  ggplot(aes(diarreia2, fill = classi_fin)) +
-     geom_bar() + labs(title = "With Dowsample")
-
-# g1/g2
+g1
+g2
 ```
-```{r}
-library(recipes)
-library(modeldata)
+
+```{r,echo=FALSE,eval=FALSE}
 data(hpc_data)
 
 hpc_data0 <- hpc_data %>%
@@ -150,38 +179,18 @@ readRDS("metricas_downsample.rds")
 ### NearMiss
 
 ```{r,echo=FALSE}
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  # Bring the majority levels down to about 1000 each
-  # 1000/259 is approx 3.862
-  step_nearmiss(class, under_ratio = 3.862) %>%
-  prep()
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Without Nearmiss")
 
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
 
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "Without NEARMISS") +
-  xlim(c(1, 15)) +
-  ylim(c(1, 15))
-
-g2 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_nearmiss(class) %>%
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_nearmiss(classi_fin) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With NEARMISS") +
-  xlim(c(1, 15)) +
-  ylim(c(1, 15))
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With Nearmiss")
 
 g1
 g2
@@ -197,38 +206,18 @@ readRDS("metricas_nearmiss.rds")
 ### Links de Tomek
 
 ```{r}
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  step_tomek(class) %>%
-  prep()
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Without Tomek")
 
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
 
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-
-# 
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "Without Tomek") +
-  xlim(c(1, 15)) +
-  ylim(c(1, 15))
-
-g2<- recipe(class ~ x + y, data = circle_example) %>%
-  step_tomek(class) %>%
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_tomek(classi_fin) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With Tomek") +
-  xlim(c(1, 15)) +
-  ylim(c(1, 15))
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With Tomek")
 
 g1
 g2
@@ -245,60 +234,21 @@ readRDS("metricas_tomek.rds")
 ### Upsample
 
 ```{r,echo=FALSE}
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  # Bring the minority levels up to about 1000 each
-  # 1000/2211 is approx 0.4523
-  step_upsample(class, over_ratio = 0.4523) %>%
-  prep()
-
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
-#> # A tibble: 4 × 2
-#>   class training
-#>   <fct>    <int>
-#> 1 VF        2211
-#> 2 F         1347
-#> 3 M         1000
-#> 4 L         1000
-
-# Since `skip` defaults to TRUE, baking the step has no effect
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-#> # A tibble: 4 × 2
-#>   class baked
-#>   <fct> <int>
-#> 1 VF     2211
-#> 2 F      1347
-#> 3 M       514
-#> 4 L       259
-
-# Note that if the original data contained more rows than the
-# target n (= ratio * majority_n), the data are left alone:
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-#> # A tibble: 4 × 4
-#>   class  orig training baked
-#>   <fct> <int>    <int> <int>
-#> 1 VF     2211     2211  2211
-#> 2 F      1347     1347  1347
-#> 3 M       514     1000   514
-#> 4 L       259     1000   259
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Without Up-Sample")
 
 
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "Without upsample")
-
-g2 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_upsample(class) %>%
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_upsample(classi_fin) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_jitter(width = 0.1, height = 0.1) +
-  labs(title = "With upsample (with jittering)")
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With Up-Sample")
+
+g1
+g2
 ```
 
 #### Métricas modelo XGboost
@@ -310,59 +260,18 @@ readRDS("metricas_upsample.rds")
 ### Smote
 
 ```{r,echo=FALSE}
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  # Bring the minority levels up to about 1000 each
-  # 1000/2211 is approx 0.4523
-  step_smote(class, over_ratio = 0.4523) %>%
-  prep()
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Without Smote")
 
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
-#> # A tibble: 4 × 2
-#>   class training
-#>   <fct>    <int>
-#> 1 VF        2211
-#> 2 F         1347
-#> 3 M         1000
-#> 4 L         1000
 
-# Since `skip` defaults to TRUE, baking the step has no effect
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-#> # A tibble: 4 × 2
-#>   class baked
-#>   <fct> <int>
-#> 1 VF     2211
-#> 2 F      1347
-#> 3 M       514
-#> 4 L       259
-
-# Note that if the original data contained more rows than the
-# # target n (= ratio * majority_n), the data are left alone:
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-#> # A tibble: 4 × 4
-#>   class  orig training baked
-#>   <fct> <int>    <int> <int>
-#> 1 VF     2211     2211  2211
-#> 2 F      1347     1347  1347
-#> 3 M       514     1000   514
-#> 4 L       259     1000   259
-
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "Without SMOTE")
-
-g2 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_smote(class) %>%
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_smote(classi_fin) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With SMOTE")
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With Smote")
 
 g1
 g2
@@ -385,59 +294,18 @@ readRDS("metricas_smoteNC.rds")
 ### ADASYN 
 
 ```{r}
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  # Bring the minority levels up to about 1000 each
-  # 1000/2211 is approx 0.4523
-  step_adasyn(class, over_ratio = 0.4523) %>%
-  prep()
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Without Adasyn")
 
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
-#> # A tibble: 4 × 2
-#>   class training
-#>   <fct>    <int>
-#> 1 VF        2211
-#> 2 F         1347
-#> 3 M         1000
-#> 4 L         1000
 
-# Since `skip` defaults to TRUE, baking the step has no effect
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-#> # A tibble: 4 × 2
-#>   class baked
-#>   <fct> <int>
-#> 1 VF     2211
-#> 2 F      1347
-#> 3 M       514
-#> 4 L       259
-
-# Note that if the original data contained more rows than the
-# target n (= ratio * majority_n), the data are left alone:
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-#> # A tibble: 4 × 4
-#>   class  orig training baked
-#>   <fct> <int>    <int> <int>
-#> 1 VF     2211     2211  2211
-#> 2 F      1347     1347  1347
-#> 3 M       514     1000   514
-#> 4 L       259     1000   259
-
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "Without ADASYN")
-
-g2 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_adasyn(class) %>%
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_adasyn(classi_fin) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With ADASYN")
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With Adasyn")
 
 g1
 g2
@@ -449,72 +317,29 @@ g2
 readRDS("metricas_adasyn.rds")
 ```
 
-### Borderline
+### Borderline Smote
 
 ```{r}
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  # Bring the minority levels up to about 1000 each
-  # 1000/2211 is approx 0.4523
-  step_bsmote(class, over_ratio = 0.4523) %>%
-  prep()
-
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
-#> # A tibble: 4 × 2
-#>   class training
-#>   <fct>    <int>
-#> 1 VF        2211
-#> 2 F         1347
-#> 3 M         1000
-#> 4 L         1000
-
-# Since `skip` defaults to TRUE, baking the step has no effect
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-#> # A tibble: 4 × 2
-#>   class baked
-#>   <fct> <int>
-#> 1 VF     2211
-#> 2 F      1347
-#> 3 M       514
-#> 4 L       259
-
-# Note that if the original data contained more rows than the
-# target n (= ratio * majority_n), the data are left alone:
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-#> # A tibble: 4 × 4
-#>   class  orig training baked
-#>   <fct> <int>    <int> <int>
-#> 1 VF     2211     2211  2211
-#> 2 F      1347     1347  1347
-#> 3 M       514     1000   514
-#> 4 L       259     1000   259
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Without Boderline-SMOTE")
 
 
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "Without SMOTE")
-
-
-g2 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_bsmote(class, all_neighbors = FALSE) %>%
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_bsmote(classi_fin,all_neighbors = FALSE) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With borderline-SMOTE, all_neighbors = FALSE")
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With  borderline-SMOTE, all_neighbors = FALSE")
 
-g3 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_bsmote(class, all_neighbors = TRUE) %>%
+g3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_bsmote(classi_fin,all_neighbors = TRUE) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With borderline-SMOTE, all_neighbors = TRUE")
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With  borderline-SMOTE, all_neighbors = TRUE")
 
 g1
 g2
@@ -538,68 +363,20 @@ readRDS("metricas_bsmotet.rds")
 ### ROSE 
 
 ```{r}
-hpc_data0 <- hpc_data %>%
-  mutate(class = factor(class == "VF", labels = c("not VF", "VF"))) %>%
-  select(-protocol, -day)
-
-orig <- count(hpc_data0, class, name = "orig")
-#> # A tibble: 2 × 2
-#>   class   orig
-#>   <fct>  <int>
-#> 1 not VF  2120
-#> 2 VF      2211
-
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  step_rose(class) %>%
-  prep()
-
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
-#> # A tibble: 2 × 2
-#>   class  training
-#>   <fct>     <int>
-#> 1 not VF     2235
-#> 2 VF         2187
-
-# Since `skip` defaults to TRUE, baking the step has no effect
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-#> # A tibble: 2 × 2
-#>   class  baked
-#>   <fct>  <int>
-#> 1 not VF  2120
-#> 2 VF      2211
-
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-#> # A tibble: 2 × 4
-#>   class   orig training baked
-#>   <fct>  <int>    <int> <int>
-#> 1 not VF  2120     2235  2120
-#> 2 VF      2211     2187  2211
-
-
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
+g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
   labs(title = "Without ROSE")
 
-g2 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_rose(class) %>%
+
+g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_rose(classi_fin) %>%
   prep() %>%
   bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With ROSE")
+  ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "With  ROSE")
 
 g1
 g2
 ```
 
-#### Métricas Modelo XGboost
-
-```{r}
-
-```
