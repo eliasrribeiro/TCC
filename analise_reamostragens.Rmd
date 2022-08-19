@@ -8,11 +8,6 @@ date: ''
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
-```
-
-## Métodos de Downsample
-
-```{r,echo=FALSE,warning=FALSE,message=FALSE}
 library(tidymodels)
 library(janitor)
 library(stringr)
@@ -24,71 +19,332 @@ library(patchwork)
 library(themis)
 library(recipes)
 library(modeldata)
+library(UBL)
+library(smotefamily)
+library(questionr)
+library(viridisLite)
+library(viridis)
+library(geobr)
+library(scales)
+library(grid)
+library(gridExtra)
+library(cowplot)
+library(data.table)
+library(zoo)
+library(summarytools)
+library(modelsummary)
+theme_set(theme_minimal())
+```
 
-dados <- readRDS("dados_newtest.rds")
+## Métodos de Downsample
 
-data <- dados  %>% 
-  filter(as.Date(DT_SIN_PRI,format="%d/%m/%Y") < as.Date("01-12-2021",format="%d-%m-%Y")) %>% # 37.847 points
-  mutate(classi_fin = as.factor(case_when(
-    CLASSI_FIN == 1 ~ "não-covid",
-    CLASSI_FIN == 2 ~ "não-covid",
-    CLASSI_FIN == 3 ~ "não-covid",
-    CLASSI_FIN == 5 ~ "covid-19",
-    TRUE ~ NA_character_))
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+states <- read_state(year = 2020) #Para gráfico
+
+dataset <- readr::read_csv("srag_16-22.gz")
+
+
+dados <- dataset  %>% #3.511.859
+    rename(sexo = CS_SEXO, idade = NU_IDADE_N) %>% 
+    filter(as.Date(DT_SIN_PRI,format="%d/%m/%Y") < as.Date("01-12-2021",format="%d-%m-%Y")) %>% #3.041.403
+    filter(sexo == "F") %>% # 1.342.879 points
+    filter(idade > 9 & idade < 56) %>% # 502.903 points
+    mutate(ano = str_sub(DT_SIN_PRI, start = 7)) %>% 
+    mutate(classi_gesta_puerp = as.factor(case_when(
+      CS_GESTANT == 1 ~ "1tri",
+      CS_GESTANT == 2 ~ "2tri",
+      CS_GESTANT == 3 ~ "3tri",
+      CS_GESTANT == 4 ~ "IG_ig",
+      CS_GESTANT == 5 & PUERPERA == 1 ~ "puerp",
+      CS_GESTANT == 9 & PUERPERA == 1 ~ "puerp"))
+    ) %>% 
+    filter(!is.na(classi_gesta_puerp)) # 38.877 points
+
+freq(dados$CLASSI_FIN)
+
+# dados1 <- dados
+
+data <- dados %>% 
+    mutate(classi_fin = as.factor(case_when(
+      CLASSI_FIN == 1 ~ "não-covid",
+      CLASSI_FIN == 2 ~ "não-covid",
+      CLASSI_FIN == 3 ~ "não-covid",
+      CLASSI_FIN == 5 ~ "covid-19",
+      TRUE ~ NA_character_))
+    ) %>% 
+    filter(!is.na(classi_fin)) %>%  # 20.619 points
+    mutate(raca = as.factor(case_when( # race
+      CS_RACA == 1 ~ "branca",
+      CS_RACA == 2 | CS_RACA == 3 | CS_RACA == 4 |
+        CS_RACA == 5 ~ "não branca",
+      CS_RACA == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%   
+    mutate(escolaridade = as.factor(case_when( # instruction
+      # ~ "sem escolaridade",
+      CS_ESCOL_N == 0 | CS_ESCOL_N == 1 | CS_ESCOL_N == 2 ~ "até fundamental",
+      CS_ESCOL_N == 3 ~ "médio",
+      CS_ESCOL_N == 4 ~ "superior",
+      CS_ESCOL_N == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>% 
+    mutate(vacina = as.factor(case_when( #vacine
+      VACINA == 1  ~ "sim",
+      VACINA == 2 ~ "não",
+      VACINA == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>% 
+    mutate(febre = as.factor(case_when( # fever
+      FEBRE == 1 ~ "sim",
+      FEBRE == 2 ~ "não",
+      FEBRE == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>% 
+    mutate(tosse = as.factor(case_when( # cough
+      TOSSE == 1 ~ "sim",
+      TOSSE == 2 ~ "não",
+      TOSSE == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>% 
+    mutate(garganta = as.factor(case_when( # throat
+      GARGANTA == 1 ~ "sim",
+      GARGANTA  == 2 ~ "não",
+      GARGANTA == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>% 
+    mutate(dispneia = as.factor(case_when( # dyspnea
+      DISPNEIA == 1 ~ "sim",
+      DISPNEIA == 2 ~ "não",
+      DISPNEIA == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%
+    mutate(desc_resp = as.factor(case_when( # respiratory distress
+      DESC_RESP == 1 ~ "sim",
+      DESC_RESP == 2 ~ "não",
+      DESC_RESP == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%
+    mutate(saturacao = as.factor(case_when( # saturation
+      SATURACAO == 1 ~ "sim",
+      SATURACAO == 2 ~ "não",
+      SATURACAO == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%
+    mutate(diarreia = as.factor(case_when( # diarrhea
+      DIARREIA == 1 ~ "sim",
+      DIARREIA == 2 ~ "não",
+      DIARREIA == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>% 
+    mutate(cardiopatia = as.factor(case_when( # heart disease
+      CARDIOPATI == 1 ~ "sim",
+      CARDIOPATI == 2 ~ "não",
+      CARDIOPATI == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%
+    mutate(pneumopatia = as.factor(case_when( # lung disease
+      PNEUMOPATI == 1 ~ "sim",
+      PNEUMOPATI == 2 ~ "não",
+      PNEUMOPATI == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%
+    mutate(renal = as.factor(case_when( # kidney disease
+      RENAL == 1 ~ "sim",
+      RENAL == 2 ~ "não",
+      RENAL == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%
+    mutate(obesidade = as.factor(case_when( # obesity
+      OBESIDADE == 1 ~ "sim",
+      OBESIDADE == 2 ~ "não",
+      OBESIDADE == 9 ~ "ignorado",
+      TRUE ~ "em branco"))
+    ) %>%
+  mutate(uti = as.factor(case_when(
+    UTI == 1 ~ "Sim",
+    UTI == 2 ~ "Não",
+    UTI == 9 ~ "Ignorado",
+    TRUE ~ "Em branco"))
+  ) %>%
+  mutate(suport_ven = as.factor(case_when(
+    SUPORT_VEN == 1 ~ "sim, invasivo",
+    SUPORT_VEN == 2 ~ "sim, não invasivo",
+    SUPORT_VEN == 3 ~ "não",
+    SUPORT_VEN == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%
+  mutate(evolucao = as.factor(case_when(
+    EVOLUCAO == 1 ~ "cura",
+    EVOLUCAO == 2 ~ "óbito",
+    EVOLUCAO == 3 ~ "óbito",
+    EVOLUCAO == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
   ) %>% 
-  filter(!is.na(classi_fin)) %>% 
   mutate(dt_notific = as.Date(DT_NOTIFIC, format = "%d/%m/%Y"),
          dt_sint = as.Date(DT_SIN_PRI, format = "%d/%m/%Y"),
-         dt_interna = as.Date(DT_INTERNA, format = "%d/%m/%Y"),
-         dt_pcr = as.Date(DT_PCR, format = "%d/%m/%Y"),
-         dt_entuti  = as.Date(DT_ENTUTI,  format = "%d/%m/%Y"),
-         dt_saiduti = as.Date(DT_SAIDUTI, format = "%d/%m/%Y"),
-         dt_evoluca = as.Date(DT_EVOLUCA, format = "%d/%m/%Y"),
-         dt_encerra = as.Date(DT_ENCERRA, format = "%d/%m/%Y"),
-         dt_digita = as.Date(DT_DIGITA, format = "%d/%m/%Y")
+         dt_interna = as.Date(DT_INTERNA, format = "%d/%m/%Y")
   ) %>% 
   mutate(
     tempo_sintomas_hosp = as.numeric(dt_interna - dt_sint),
-    tempo_sintomas_notific = as.numeric(dt_notific - dt_sint),
-    tempo_uti = as.numeric(dt_saiduti - dt_entuti),
-    tempo_sint_evolucao = as.numeric(dt_evoluca - dt_sint)
-  ) %>% 
-  select(idade,tempo_sintomas_notific,classi_fin) %>% 
-  drop_na()
+    tempo_sintomas_notific = as.numeric(dt_notific - dt_sint)
+  ) 
+
+
+# dados numéricos
+data1 <- data %>% 
+  select(idade,tempo_sintomas_notific,tempo_sintomas_hosp,classi_fin) 
+
+data2 <- data %>%
+  select(!where(is.numeric),idade,tempo_sintomas_notific,tempo_sintomas_hosp, -c(ano, DT_SIN_PRI,DT_NOTIFIC,DT_INTERNA,sexo)) 
+```
+
+## Casos por estado COVID-19
+
+```{r}
+dados4 <- data2 %>%
+   select(SG_UF,classi_fin) %>%
+   filter(classi_fin == "covid-19") 
+
+valor <- data.frame(table(dados4$SG_UF))
+colnames(valor) <- c("uf", "n")
+
+dt22_state <- valor %>%
+   mutate(T2 = (n/sum(n))*100)
+
+states2 <- dplyr::left_join(states, dt22_state, by = c("abbrev_state" = "uf"))
+
+g1 <- ggplot(data = states2)+
+  geom_sf(aes(fill = T2), color = "grey30", size = .15) +
+  theme_void()  +
+  labs(title="COVID-19",subtitle = "(a) Porcentagem de casos de COVID-19 por estado") +
+  scale_fill_viridis_c(option = "magma", direction = -1,limits=c(0,26)) + 
+  theme(legend.position="none")
 
 ```
+
+## Casos por estado não COVID-19
+
+```{r}
+dados5 <- data2 %>%
+   select(SG_UF,classi_fin) %>%
+   filter(classi_fin == "não-covid") 
+
+valor1 <- data.frame(table(dados5$SG_UF))
+colnames(valor1) <- c("uf", "n")
+
+dt11_state <- valor1 %>%
+   mutate(T2 = (n/sum(n))*100)
+
+states1 <- dplyr::left_join(states, dt11_state, by = c("abbrev_state" = "uf"))
+
+g2 <- ggplot(data= states1) +
+  geom_sf(aes(fill=T2), color= "grey30", size=.15) +
+  theme_void()  +
+  labs(fill = "Casos[%]",title="Não COVID-19",subtitle = "(b) Porcentagem de casos de não COVID-19 por estado") +
+  scale_fill_viridis_c(option="magma",direction=-1)
+
+g1|g2 #850x450
+```
+
+Casos Covid-19 por data de primeiros sintomas
+
+```{r}
+d <- data2 %>% 
+  mutate(month_year = paste(formatC(month(dt_sint), width=2, format="d", flag="0"),
+                            year(dt_sint),sep="/")) %>% 
+  filter(classi_fin=="covid-19")
+
+freq_mes <- data.table(table(d$month_year))
+freq_mes$V1 <- as.yearmon(freq_mes$V1, format = "%m/%Y") 
+freq_mes$V3 <- as.Date(format(freq_mes$V1,"%Y-%m-01"))
+
+g3 <- ggplot(data=freq_mes, aes(x = V3, y=N)) + 
+  geom_line(size=1.2, color="plum") + 
+  geom_point(size=2,color="plum") + 
+ xlab("Mês dos primeiros sintomas")  +
+    ylab("Número de casos") + scale_x_date(labels = date_format("%h %y"),
+               breaks = seq(from = min(freq_mes$V3), 
+                            to = max(freq_mes$V3), by = "month")) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) + theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
+  labs(title="COVID-19",subtitle = ("(a) Casos de SRAG por COVID-19"))
+```
+
+Casos não Covid por data de primeiros sintomas
+
+```{r}
+d1 <- data2 %>% 
+  mutate(month_year = paste(formatC(month(dt_sint), width=2, format="d", flag="0"),
+                            year(dt_sint),sep="/")) %>% 
+  filter(classi_fin=="não-covid")
+
+freq_mes <- data.table(table(d1$month_year))
+freq_mes$V1 <- as.yearmon(freq_mes$V1, format = "%m/%Y") 
+freq_mes$V3 <- as.Date(format(freq_mes$V1,"%Y-%m-01"))
+
+g4 <- ggplot(data=freq_mes, aes(x = V3, y=N)) + 
+  geom_line(size=1.2, color="plum") + 
+  geom_point(size=2,color="plum") +
+ xlab("Mês dos primeiros sintomas") + ylab("Número de Casos") + theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
+  labs(title="Não COVID-19",subtitle="(b) Casos de SRAG por não COVID-19")
+
+g3/g4 #800x750
+```
+
+```{r}
+media <- function(x)
+  mean(x, na.rm = TRUE)
+mediana <- function(x)
+  median(x, na.rm = TRUE)
+DP <- function(x)
+  sd(x, na.rm = TRUE)
+minimo <- function(x)
+  base::min(x, na.rm = TRUE)
+maximo <- function(x)
+  base::max(x, na.rm = TRUE)
+q25 <- function(x)
+  stats::quantile(x, p = 0.25, na.rm = TRUE)
+q75 <- function(x)
+  stats::quantile(x, p = 0.75, na.rm = TRUE)
+IQR <- function(x)
+  round(q75(x) - q25(x), 2)
+n <- function(x)
+  sum(!is.na(x))
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = data1, output = 'markdown')
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = data1, output = 'markdown')
+```
+
+
 
 ### DownSample
 
 ```{r,echo=TRUE}
+data <- data1 %>% 
+  select(idade, tempo_sintomas_notific,classi_fin) %>% 
+  drop_na() %>% 
+  as.data.frame()
 
-# objeto <- data %>% select(diarreia2,saturacao2)
-# 
-# matrix <- distance(objeto)
-
-
-# ds_rec <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-#   step_downsample(classi_fin) %>%
-#   prep()
-#     
-# new_data <- juice(data,ds_rec)
-
-
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+g5 <- ggplot(data, aes(idade, tempo_sintomas_notific,color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "Without downsample")
+  labs(title = "Dados originais") + ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_downsample(classi_fin) %>%
+g6 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_downsample(classi_fin,seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With downsample")
+  labs(title = "Com Down-sample") + ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g1
-g2
+g5|g6
 ```
 
 ```{r,echo=FALSE,eval=FALSE}
@@ -172,28 +428,22 @@ g2
 #### Métricas modelo XGboost
 
 ```{r}
-readRDS("metricas_downsample.rds")
+# readRDS("metricas_downsample.rds")
 ```
-
 
 ### NearMiss
 
 ```{r,echo=FALSE}
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
-  geom_point(alpha=0.5) +
-  labs(title = "Without Nearmiss")
-
-
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_nearmiss(classi_fin) %>%
+g7 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_nearmiss(classi_fin, seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With Nearmiss")
+  labs(title = "Com Near-miss") + ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g1
-g2
+g5|g7
 ```
 
 #### Métricas modelo XGboost
@@ -206,21 +456,25 @@ readRDS("metricas_nearmiss.rds")
 ### Links de Tomek
 
 ```{r}
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
-  geom_point(alpha=0.5) +
-  labs(title = "Without Tomek")
+set.seed(69)
 
+dado <- TomekClassif(classi_fin ~., data,rem="maj")[[1]]
 
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_tomek(classi_fin) %>%
-  prep() %>%
-  bake(new_data = NULL) %>%
+# g8 <- recipe(classi_fin ~ idade + tempo_sintomas_notific,data = data) %>%
+#   step_tomek(classi_fin,seed=69) %>%
+#   prep() %>%
+#   bake(new_data = NULL) #%>%
+  # ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  # geom_point(alpha=0.5) +
+  # labs(title = "With Tomek")
+
+g8 <- dado %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With Tomek")
+  labs(title = "Com Links de Tomek") + ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g1
-g2
+g5|g8
 ```
 
 #### Métricas modelo XGboost
@@ -234,21 +488,16 @@ readRDS("metricas_tomek.rds")
 ### Upsample
 
 ```{r,echo=FALSE}
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
-  geom_point(alpha=0.5) +
-  labs(title = "Without Up-Sample")
-
-
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_upsample(classi_fin) %>%
+g9 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_upsample(classi_fin,seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With Up-Sample")
+  labs(title = "Com Up-Sample") + ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g1
-g2
+g5|g9
 ```
 
 #### Métricas modelo XGboost
@@ -260,21 +509,16 @@ readRDS("metricas_upsample.rds")
 ### Smote
 
 ```{r,echo=FALSE}
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
-  geom_point(alpha=0.5) +
-  labs(title = "Without Smote")
-
-
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_smote(classi_fin) %>%
+g10 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_smote(classi_fin,seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With Smote")
+  labs(title = "Com SMOTE") + ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g1
-g2
+g5|g10
 ```
 
 #### Métricas modelo XGboost
@@ -294,21 +538,16 @@ readRDS("metricas_smoteNC.rds")
 ### ADASYN 
 
 ```{r}
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
-  geom_point(alpha=0.5) +
-  labs(title = "Without Adasyn")
-
-
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_adasyn(classi_fin) %>%
+g11 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_adasyn(classi_fin,seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With Adasyn")
+  labs(title = "Com ADASYN") + ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g1
-g2
+g5|g11
 ```
 
 #### Métricas modelo XGboost
@@ -320,30 +559,44 @@ readRDS("metricas_adasyn.rds")
 ### Borderline Smote
 
 ```{r}
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
-  geom_point(alpha=0.5) +
-  labs(title = "Without Boderline-SMOTE")
-
-
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+g12 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   step_bsmote(classi_fin,all_neighbors = FALSE) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With  borderline-SMOTE, all_neighbors = FALSE")
+  labs(title = "Com  Borderline-SMOTE1") + 
+  ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+g13 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   step_bsmote(classi_fin,all_neighbors = TRUE) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With  borderline-SMOTE, all_neighbors = TRUE")
+  labs(title = "Com  Borderline-SMOTE2") + 
+  ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
 
-g1
-g2
-g3
+g12|g13
+```
+
+### DBSMOTE
+
+```{r}
+
+dado <- DBSMOTE(data %>% select(-classi_fin),data$classi_fin)$data
+
+dado$classi_fin <- as.factor(dado$class)
+
+g14 <- ggplot(dado,aes(idade, tempo_sintomas_notific, color = classi_fin)) +
+  geom_point(alpha=0.5) +
+  labs(title = "Com  DBSSMOTE") + 
+  ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + labs(color="Classificação")
+
+g5|g14
 ```
 
 #### Métricas modelo XGboost
@@ -363,20 +616,66 @@ readRDS("metricas_bsmotet.rds")
 ### ROSE 
 
 ```{r}
-g1 <- ggplot(data, aes(idade, tempo_sintomas_notific, color = classi_fin)) +
-  geom_point(alpha=0.5) +
-  labs(title = "Without ROSE")
-
-
-g2 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+g15 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   step_rose(classi_fin) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "With  ROSE")
+  labs(title = "Com  ROSE") + 
+  ylab("Dias do sintoma até a notificação") +
+  scale_colour_viridis_d() + 
+  labs(color="Classificação")
 
-g1
-g2
+g5|g15
+```
+# Junção Gráficos
+
+#Boderlines
+
+```{r}
+legend <- get_legend(g5)
+gg5 <- g5 + theme(legend.position="none") + labs(subtitle = "(a)")
+gg12 <- g12 + theme(legend.position="none") + labs(subtitle = "(b)")
+gg13 <- g13  + theme(legend.position="none") + labs(subtitle = "(c)")
+grid.arrange(gg5 ,gg12,gg13,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8)) #900x420
 ```
 
+#Subamostragens
+
+```{r}
+gg5 <- g5 + theme(legend.position="none") + labs(subtitle = "(a)")
+gg7 <- g7 + theme(legend.position="none") + labs(subtitle = "(b)")
+gg8 <- g8 + theme(legend.position="none") + labs(subtitle = "(c)")
+grid.arrange(gg5 ,gg7,gg8,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8))  #900x420
+```
+
+upsample e downsample
+
+```{r}
+gg6 <- g6 + theme(legend.position="none") + labs(subtitle = "(b)")
+gg9 <- g9 + theme(legend.position="none") + labs(subtitle = "(c)")
+grid.arrange(gg5 ,gg6,gg9,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8))  #900x420
+```
+
+Smote
+
+```{r}
+gg10 <- g10 + theme(legend.position="none") + labs(subtitle = "(b)")
+grid.arrange(gg5 ,gg10,legend, ncol=3, widths=c(2.3, 2.3, 0.8))  #900x420
+```
+
+Adasyn e DBSMOTE
+
+```{r}
+gg11 <- g11 + theme(legend.position="none") + labs(subtitle = "(b)")
+gg14 <- g14 + theme(legend.position="none") + labs(subtitle = "(c)")
+grid.arrange(gg5 ,gg11,gg14,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8))  #900x420
+```
+
+Rose
+
+```{r}
+gg15 <- g15 + theme(legend.position="none") + labs(subtitle = "(b)")
+grid.arrange(gg5 ,gg15,legend, ncol=3, widths=c(2.3, 2.3, 0.8))  #900x420
+```
