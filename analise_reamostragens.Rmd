@@ -7,7 +7,7 @@ date: ''
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE,message=FALSE)
 library(tidymodels)
 library(janitor)
 library(stringr)
@@ -342,7 +342,8 @@ g6 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
   labs(title = "Com Down-sample") + ylab("Dias do sintoma até a notificação") +
-  scale_colour_viridis_d() + labs(color="Classificação")
+  scale_colour_viridis_d() + labs(color="Classificação") + 
+  scale_y_continuous(limits = c(0,700))
 
 g5|g6
 ```
@@ -441,7 +442,8 @@ g7 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
   labs(title = "Com Near-miss") + ylab("Dias do sintoma até a notificação") +
-  scale_colour_viridis_d() + labs(color="Classificação")
+  scale_colour_viridis_d() + labs(color="Classificação") +
+  scale_y_continuous(limits = c(0,700))
 
 g5|g7
 ```
@@ -560,7 +562,7 @@ readRDS("metricas_adasyn.rds")
 
 ```{r}
 g12 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_bsmote(classi_fin,all_neighbors = FALSE) %>%
+  step_bsmote(classi_fin,all_neighbors = FALSE,seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
@@ -570,7 +572,7 @@ g12 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   scale_colour_viridis_d() + labs(color="Classificação")
 
 g13 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_bsmote(classi_fin,all_neighbors = TRUE) %>%
+  step_bsmote(classi_fin,all_neighbors = TRUE,seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
@@ -584,7 +586,8 @@ g12|g13
 
 ### DBSMOTE
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
+set.seed(69)
 
 dado <- DBSMOTE(data %>% select(-classi_fin),data$classi_fin)$data
 
@@ -592,7 +595,7 @@ dado$classi_fin <- as.factor(dado$class)
 
 g14 <- ggplot(dado,aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
-  labs(title = "Com  DBSSMOTE") + 
+  labs(title = "Com  DBSMOTE") + 
   ylab("Dias do sintoma até a notificação") +
   scale_colour_viridis_d() + labs(color="Classificação")
 
@@ -617,7 +620,7 @@ readRDS("metricas_bsmotet.rds")
 
 ```{r}
 g15 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
-  step_rose(classi_fin) %>%
+  step_rose(classi_fin,seed=69) %>%
   prep() %>%
   bake(new_data = NULL) %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
@@ -625,7 +628,7 @@ g15 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   labs(title = "Com  ROSE") + 
   ylab("Dias do sintoma até a notificação") +
   scale_colour_viridis_d() + 
-  labs(color="Classificação")
+  labs(color="Classificação") + scale_y_continuous(limits = c(0,700))
 
 g5|g15
 ```
