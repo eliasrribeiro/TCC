@@ -1,6 +1,6 @@
 ---
-title: "Modelo de regressão quantílica com fração de cura: uma aplicação aos dados de COVID-19 grave na população materna"
-author: "Ornella Scardua Ferreira"
+title: "Métodos de reamostragem para dados desbalanceados: uma aplicação para classificação de COVID-19 na população materna"
+author: "Elias Ribeiro Rosa Junior"
 output: 
   xaringan::moon_reader:
     lib_dir: libs
@@ -85,11 +85,9 @@ class: middle
 
 - Comparar essas metodologias via estudos de simulação.
 
-- Reunir informações de pacotes e funções atualizadas no software R, que podem ser utiliza-
-das para cada método específico, destacando suas diferenças, vantagens e desvantagens.
+- Reunir informações de pacotes e funções atualizadas no software R, que podem ser utilizadas para cada método específico, destacando suas diferenças, vantagens e desvantagens.
 
-- Comparar a eficiência dos métodos em termos de medidas de desempenho e de interpreta-
-bilidade na fase de teste do modelo XGBoost.
+- Comparar a eficiência dos métodos em termos de medidas de desempenho e de interpreta0bilidade na fase de teste do modelo XGBoost.
 
 - Indicar a metodologia de reamostragem que forneceu o melhor ajuste do modelo na fase
 de treinamento. Usar esse modelo para classificar os casos não especificados de SRAG
