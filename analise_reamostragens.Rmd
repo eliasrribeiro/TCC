@@ -67,10 +67,10 @@ freq(dados$CLASSI_FIN)
 
 data <- dados %>% 
     mutate(classi_fin = as.factor(case_when(
-      CLASSI_FIN == 1 ~ "não-covid",
-      CLASSI_FIN == 2 ~ "não-covid",
-      CLASSI_FIN == 3 ~ "não-covid",
-      CLASSI_FIN == 5 ~ "covid-19",
+      CLASSI_FIN == 1 ~ "Não COVID-19",
+      CLASSI_FIN == 2 ~ "Não COVID-19",
+      CLASSI_FIN == 3 ~ "Não COVID-19",
+      CLASSI_FIN == 5 ~ "COVID-19",
       TRUE ~ NA_character_))
     ) %>% 
     filter(!is.na(classi_fin)) %>%  # 20.619 points
@@ -204,7 +204,7 @@ data2 <- data %>%
 ```{r}
 dados4 <- data2 %>%
    select(SG_UF,classi_fin) %>%
-   filter(classi_fin == "covid-19") 
+   filter(classi_fin == "COVID-19") 
 
 valor <- data.frame(table(dados4$SG_UF))
 colnames(valor) <- c("uf", "n")
@@ -228,7 +228,7 @@ g1 <- ggplot(data = states2)+
 ```{r}
 dados5 <- data2 %>%
    select(SG_UF,classi_fin) %>%
-   filter(classi_fin == "não-covid") 
+   filter(classi_fin == "não COVID-19") 
 
 valor1 <- data.frame(table(dados5$SG_UF))
 colnames(valor1) <- c("uf", "n")
@@ -253,7 +253,7 @@ Casos Covid-19 por data de primeiros sintomas
 d <- data2 %>% 
   mutate(month_year = paste(formatC(month(dt_sint), width=2, format="d", flag="0"),
                             year(dt_sint),sep="/")) %>% 
-  filter(classi_fin=="covid-19")
+  filter(classi_fin=="COVID-19")
 
 freq_mes <- data.table(table(d$month_year))
 freq_mes$V1 <- as.yearmon(freq_mes$V1, format = "%m/%Y") 
@@ -268,7 +268,7 @@ g3 <- ggplot(data=freq_mes, aes(x = V3, y=N)) +
                             to = max(freq_mes$V3), by = "month")) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) + theme_minimal() + 
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
-  labs(title="COVID-19",subtitle = ("(a) Casos de SRAG por COVID-19"))
+  labs(title="COVID-19",subtitle = ("(a) Casos de COVID-19"))
 ```
 
 Casos não Covid por data de primeiros sintomas
@@ -277,7 +277,7 @@ Casos não Covid por data de primeiros sintomas
 d1 <- data2 %>% 
   mutate(month_year = paste(formatC(month(dt_sint), width=2, format="d", flag="0"),
                             year(dt_sint),sep="/")) %>% 
-  filter(classi_fin=="não-covid")
+  filter(classi_fin=="não COVID-19")
 
 freq_mes <- data.table(table(d1$month_year))
 freq_mes$V1 <- as.yearmon(freq_mes$V1, format = "%m/%Y") 
@@ -288,7 +288,7 @@ g4 <- ggplot(data=freq_mes, aes(x = V3, y=N)) +
   geom_point(size=2,color="plum") +
  xlab("Mês dos primeiros sintomas") + ylab("Número de Casos") + theme_minimal() + 
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
-  labs(title="Não COVID-19",subtitle="(b) Casos de SRAG por não COVID-19")
+  labs(title="Não COVID-19",subtitle="(b) Casos de não COVID-19")
 
 g3/g4 #800x750
 ```
@@ -313,11 +313,15 @@ IQR <- function(x)
 n <- function(x)
   sum(!is.na(x))
 
-datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+datasummary1 <- datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
             data = data1, output = 'markdown')
 
-datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
-            data = data1, output = 'markdown')
+datasummary2 <- datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+                 data = data1, output = 'markdown')
+
+t.test(idade~ classi_fin, data = data1)
+t.test(tempo_sintomas_notific~ classi_fin, data = data1)
+
 ```
 
 
@@ -333,12 +337,14 @@ data <- data1 %>%
 g5 <- ggplot(data, aes(idade, tempo_sintomas_notific,color = classi_fin)) +
   geom_point(alpha=0.5) +
   labs(title = "Dados originais") + ylab("Dias do sintoma até a notificação") +
-  scale_colour_viridis_d() + labs(color="Classificação")
+  scale_colour_viridis_d() + labs(color="Classificação") 
 
-g6 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+dados3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   step_downsample(classi_fin,seed=69) %>%
   prep() %>%
-  bake(new_data = NULL) %>%
+  bake(new_data = NULL)
+
+g6 <-  dados3 %>%
   ggplot(aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   geom_point(alpha=0.5) +
   labs(title = "Com Down-sample") + ylab("Dias do sintoma até a notificação") +
@@ -346,6 +352,12 @@ g6 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   scale_y_continuous(limits = c(0,700))
 
 g5|g6
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown')
 ```
 
 ```{r,echo=FALSE,eval=FALSE}
@@ -445,6 +457,18 @@ g7 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   scale_colour_viridis_d() + labs(color="Classificação") +
   scale_y_continuous(limits = c(0,700))
 
+
+dados3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_nearmiss(classi_fin, seed=69) %>%
+  prep() %>%
+  bake(new_data = NULL)
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown')
+
 g5|g7
 ```
 
@@ -476,7 +500,14 @@ g8 <- dado %>%
   labs(title = "Com Links de Tomek") + ylab("Dias do sintoma até a notificação") +
   scale_colour_viridis_d() + labs(color="Classificação")
 
+
 g5|g8
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dado, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dado, output = 'markdown')
 ```
 
 #### Métricas modelo XGboost
@@ -499,6 +530,18 @@ g9 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   labs(title = "Com Up-Sample") + ylab("Dias do sintoma até a notificação") +
   scale_colour_viridis_d() + labs(color="Classificação")
 
+
+dados3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_upsample(classi_fin,seed=69) %>%
+  prep() %>%
+  bake(new_data = NULL)
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown')
+
 g5|g9
 ```
 
@@ -519,6 +562,18 @@ g10 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   geom_point(alpha=0.5) +
   labs(title = "Com SMOTE") + ylab("Dias do sintoma até a notificação") +
   scale_colour_viridis_d() + labs(color="Classificação")
+
+
+dados3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_smote(classi_fin,seed=69) %>%
+  prep() %>%
+  bake(new_data = NULL)
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown')
 
 g5|g10
 ```
@@ -548,6 +603,18 @@ g11 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   geom_point(alpha=0.5) +
   labs(title = "Com ADASYN") + ylab("Dias do sintoma até a notificação") +
   scale_colour_viridis_d() + labs(color="Classificação")
+
+
+dados3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_adasyn(classi_fin,seed=69) %>%
+  prep() %>%
+  bake(new_data = NULL)
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown')
 
 g5|g11
 ```
@@ -582,6 +649,17 @@ g13 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   scale_colour_viridis_d() + labs(color="Classificação")
 
 g12|g13
+
+dados3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_bsmote(classi_fin,all_neighbors = TRUE,seed=69) %>%
+  prep() %>%
+  bake(new_data = NULL)
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown')
 ```
 
 ### DBSMOTE
@@ -600,6 +678,13 @@ g14 <- ggplot(dado,aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   scale_colour_viridis_d() + labs(color="Classificação")
 
 g5|g14
+
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dado, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dado, output = 'markdown')
 ```
 
 #### Métricas modelo XGboost
@@ -631,6 +716,17 @@ g15 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
   labs(color="Classificação") + scale_y_continuous(limits = c(0,700))
 
 g5|g15
+
+dados3 <- recipe(classi_fin ~ idade + tempo_sintomas_notific, data = data) %>%
+  step_rose(classi_fin,seed=69) %>%
+  prep() %>%
+  bake(new_data = NULL)
+
+datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown') 
+
+datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
+            data = dados3, output = 'markdown')
 ```
 # Junção Gráficos
 
@@ -641,7 +737,7 @@ legend <- get_legend(g5)
 gg5 <- g5 + theme(legend.position="none") + labs(subtitle = "(a)")
 gg12 <- g12 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg13 <- g13  + theme(legend.position="none") + labs(subtitle = "(c)")
-grid.arrange(gg5 ,gg12,gg13,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8)) #900x420
+grid.arrange(gg5 ,gg12,gg13,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2)) #900x420
 ```
 
 #Subamostragens
@@ -650,7 +746,7 @@ grid.arrange(gg5 ,gg12,gg13,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8)) #900x42
 gg5 <- g5 + theme(legend.position="none") + labs(subtitle = "(a)")
 gg7 <- g7 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg8 <- g8 + theme(legend.position="none") + labs(subtitle = "(c)")
-grid.arrange(gg5 ,gg7,gg8,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8))  #900x420
+grid.arrange(gg5 ,gg7,gg8,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2))  #900x420
 ```
 
 upsample e downsample
@@ -658,7 +754,7 @@ upsample e downsample
 ```{r}
 gg6 <- g6 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg9 <- g9 + theme(legend.position="none") + labs(subtitle = "(c)")
-grid.arrange(gg5 ,gg6,gg9,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8))  #900x420
+grid.arrange(gg5 ,gg6,gg9,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2))  #900x420
 ```
 
 Smote
@@ -673,12 +769,12 @@ Adasyn e DBSMOTE
 ```{r}
 gg11 <- g11 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg14 <- g14 + theme(legend.position="none") + labs(subtitle = "(c)")
-grid.arrange(gg5 ,gg11,gg14,legend, ncol=4, widths=c(2.3, 2.3,2.3, 0.8))  #900x420
+grid.arrange(gg5 ,gg11,gg14,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2))  #900x420
 ```
 
 Rose
 
 ```{r}
 gg15 <- g15 + theme(legend.position="none") + labs(subtitle = "(b)")
-grid.arrange(gg5 ,gg15,legend, ncol=3, widths=c(2.3, 2.3, 0.8))  #900x420
+grid.arrange(gg5 ,gg15,legend, ncol=3, widths=c(2.3, 2.3, 1.2))  #900x420
 ```
