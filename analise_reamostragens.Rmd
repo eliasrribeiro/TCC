@@ -1,6 +1,7 @@
 ---
 title: "Técnicas de Reamostragem"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 date: ''
@@ -33,6 +34,7 @@ library(data.table)
 library(zoo)
 library(summarytools)
 library(modelsummary)
+library(glmnet)
 theme_set(theme_minimal())
 ```
 
@@ -42,7 +44,7 @@ theme_set(theme_minimal())
 
 states <- read_state(year = 2020) #Para gráfico
 
-dataset <- readr::read_csv("srag_16-22.gz")
+dataset <- readr::read_csv("srag_16-22.gz") # pego em 17/08/2022
 
 
 dados <- dataset  %>% #3.511.859
@@ -195,8 +197,12 @@ data <- dados %>%
 data1 <- data %>% 
   select(idade,tempo_sintomas_notific,tempo_sintomas_hosp,classi_fin) 
 
+data3 <- data %>% 
+  select(idade,dt_sint,ano,tempo_sintomas_notific,tempo_sintomas_hosp,classi_fin) 
+
 data2 <- data %>%
   select(!where(is.numeric),idade,tempo_sintomas_notific,tempo_sintomas_hosp, -c(ano, DT_SIN_PRI,DT_NOTIFIC,DT_INTERNA,sexo)) 
+
 ```
 
 ## Casos por estado COVID-19
@@ -228,9 +234,10 @@ g1 <- ggplot(data = states2)+
 ```{r}
 dados5 <- data2 %>%
    select(SG_UF,classi_fin) %>%
-   filter(classi_fin == "não COVID-19") 
+   filter(classi_fin == "Não COVID-19") 
 
 valor1 <- data.frame(table(dados5$SG_UF))
+
 colnames(valor1) <- c("uf", "n")
 
 dt11_state <- valor1 %>%
@@ -277,7 +284,7 @@ Casos não Covid por data de primeiros sintomas
 d1 <- data2 %>% 
   mutate(month_year = paste(formatC(month(dt_sint), width=2, format="d", flag="0"),
                             year(dt_sint),sep="/")) %>% 
-  filter(classi_fin=="não COVID-19")
+  filter(classi_fin=="Não COVID-19")
 
 freq_mes <- data.table(table(d1$month_year))
 freq_mes$V1 <- as.yearmon(freq_mes$V1, format = "%m/%Y") 
@@ -324,6 +331,7 @@ t.test(tempo_sintomas_notific~ classi_fin, data = data1)
 
 ```
 
+## Remonstragem com dados numéricos
 
 
 ### DownSample
@@ -360,89 +368,6 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
             data = dados3, output = 'markdown')
 ```
 
-```{r,echo=FALSE,eval=FALSE}
-data(hpc_data)
-
-hpc_data0 <- hpc_data %>%
-  select(-protocol, -day)
-
-orig <- count(hpc_data0, class, name = "orig")
-# orig
-#> # A tibble: 4 × 2
-#>   class  orig
-#>   <fct> <int>
-#> 1 VF     2211
-#> 2 F      1347
-#> 3 M       514
-#> 4 L       259
-
-up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-  # Bring the majority levels down to about 1000 each
-  # 1000/259 is approx 3.862
-  step_downsample(class, under_ratio = 3.862) %>%
-  prep()
-
-training <- up_rec %>%
-  bake(new_data = NULL) %>%
-  count(class, name = "training")
-# training
-#> # A tibble: 4 × 2
-#>   class training
-#>   <fct>    <int>
-#> 1 VF        1000
-#> 2 F         1000
-#> 3 M          514
-#> 4 L          259
-
-# Since `skip` defaults to TRUE, baking the step has no effect
-baked <- up_rec %>%
-  bake(new_data = hpc_data0) %>%
-  count(class, name = "baked")
-# baked
-#> # A tibble: 4 × 2
-#>   class baked
-#>   <fct> <int>
-#> 1 VF     2211
-#> 2 F      1347
-#> 3 M       514
-#> 4 L       259
-
-# Note that if the original data contained more rows than the
-# target n (= ratio * majority_n), the data are left alone:
-# orig %>%
-#   left_join(training, by = "class") %>%
-#   left_join(baked, by = "class")
-#> # A tibble: 4 × 4
-#>   class  orig training baked
-#>   <fct> <int>    <int> <int>
-#> 1 VF     2211     1000  2211
-#> 2 F      1347     1000  1347
-#> 3 M       514      514   514
-#> 4 L       259      259   259
-
-
-
-g1 <- ggplot(circle_example, aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "Without downsample")
-
-g2 <- recipe(class ~ x + y, data = circle_example) %>%
-  step_downsample(class) %>%
-  prep() %>%
-  bake(new_data = NULL) %>%
-  ggplot(aes(x, y, color = class)) +
-  geom_point() +
-  labs(title = "With downsample")
-
-g1
-g2
-```
-
-#### Métricas modelo XGboost
-
-```{r}
-# readRDS("metricas_downsample.rds")
-```
 
 ### NearMiss
 
@@ -470,12 +395,6 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
             data = dados3, output = 'markdown')
 
 g5|g7
-```
-
-#### Métricas modelo XGboost
-
-```{r}
-readRDS("metricas_nearmiss.rds")
 ```
 
 
@@ -510,12 +429,6 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
             data = dado, output = 'markdown')
 ```
 
-#### Métricas modelo XGboost
-
-```{r}
-readRDS("metricas_tomek.rds")
-```
-
 ## Métodos de Up-Sample
 
 ### Upsample
@@ -545,11 +458,6 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
 g5|g9
 ```
 
-#### Métricas modelo XGboost
-
-```{r}
-readRDS("metricas_upsample.rds")
-```
 
 ### Smote
 
@@ -578,19 +486,7 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
 g5|g10
 ```
 
-#### Métricas modelo XGboost
 
-```{r}
-readRDS("metricas_smote.rds")
-```
-
-### SMOTE NC 
-
-#### Métricas modelo XGboost
-
-```{r}
-readRDS("metricas_smoteNC.rds")
-```
 
 ### ADASYN 
 
@@ -617,12 +513,6 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
             data = dados3, output = 'markdown')
 
 g5|g11
-```
-
-#### Métricas modelo XGboost
-
-```{r}
-readRDS("metricas_adasyn.rds")
 ```
 
 ### Borderline Smote
@@ -664,7 +554,7 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
 
 ### DBSMOTE
 
-```{r,warning=FALSE,message=FALSE}
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 set.seed(69)
 
 dado <- DBSMOTE(data %>% select(-classi_fin),data$classi_fin)$data
@@ -676,7 +566,9 @@ g14 <- ggplot(dado,aes(idade, tempo_sintomas_notific, color = classi_fin)) +
   labs(title = "Com  DBSMOTE") + 
   ylab("Dias do sintoma até a notificação") +
   scale_colour_viridis_d() + labs(color="Classificação")
+```
 
+```{r}
 g5|g14
 
 
@@ -687,19 +579,6 @@ datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+I
             data = dado, output = 'markdown')
 ```
 
-#### Métricas modelo XGboost
-
-##### Method 1
-
-```{r}
-readRDS("metricas_bsmotef.rds")
-```
-
-##### Method 2
-
-```{r}
-readRDS("metricas_bsmotet.rds")
-```
 
 ### ROSE 
 
@@ -728,53 +607,1202 @@ datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
 datasummary((classi_fin) ~  tempo_sintomas_notific*(n+media+DP+mediana+q25+q75+IQR),
             data = dados3, output = 'markdown')
 ```
-# Junção Gráficos
 
-#Boderlines
 
-```{r}
+```{r,echo=FALSE,eval=FALSE}
+### Junção Gráficos
+
+#### Boderlines
+
 legend <- get_legend(g5)
 gg5 <- g5 + theme(legend.position="none") + labs(subtitle = "(a)")
 gg12 <- g12 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg13 <- g13  + theme(legend.position="none") + labs(subtitle = "(c)")
 grid.arrange(gg5 ,gg12,gg13,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2)) #900x420
-```
 
-#Subamostragens
 
-```{r}
+#### Subamostragens
+
+
 gg5 <- g5 + theme(legend.position="none") + labs(subtitle = "(a)")
 gg7 <- g7 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg8 <- g8 + theme(legend.position="none") + labs(subtitle = "(c)")
 grid.arrange(gg5 ,gg7,gg8,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2))  #900x420
-```
 
-upsample e downsample
 
-```{r}
+#### upsample e downsample
+
 gg6 <- g6 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg9 <- g9 + theme(legend.position="none") + labs(subtitle = "(c)")
 grid.arrange(gg5 ,gg6,gg9,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2))  #900x420
-```
 
-Smote
 
-```{r}
+#### Smote
+
+
 gg10 <- g10 + theme(legend.position="none") + labs(subtitle = "(b)")
 grid.arrange(gg5 ,gg10,legend, ncol=3, widths=c(2.3, 2.3, 0.8))  #900x420
-```
 
-Adasyn e DBSMOTE
 
-```{r}
+#### Adasyn e DBSMOTE
+
 gg11 <- g11 + theme(legend.position="none") + labs(subtitle = "(b)")
 gg14 <- g14 + theme(legend.position="none") + labs(subtitle = "(c)")
 grid.arrange(gg5 ,gg11,gg14,legend, ncol=4, widths=c(2.3, 2.3,2.3, 1.2))  #900x420
-```
 
-Rose
 
-```{r}
+#### Rose
+
 gg15 <- g15 + theme(legend.position="none") + labs(subtitle = "(b)")
 grid.arrange(gg5 ,gg15,legend, ncol=3, widths=c(2.3, 2.3, 1.2))  #900x420
 ```
+
+## Reamostragem com dados numéricos e categóricos com aplicação do modelo logístico
+
+### Dados
+
+```{r}
+# Selecting data ------------
+
+data_categorico <- dados %>% 
+  mutate(classi_fin = as.factor(case_when(
+      CLASSI_FIN == 1 ~ "Não COVID-19",
+      CLASSI_FIN == 2 ~ "Não COVID-19",
+      CLASSI_FIN == 3 ~ "Não COVID-19",
+      CLASSI_FIN == 5 ~ "COVID-19",
+      TRUE ~ NA_character_))
+    ) %>% 
+  filter(!is.na(classi_fin)) %>%# 20.629 points
+  mutate(raca = as.factor(case_when( # race
+    CS_RACA == 1 ~ "branca",
+    CS_RACA == 2 | CS_RACA == 3 | CS_RACA == 4 |
+      CS_RACA == 5 ~ "não branca",
+    CS_RACA == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%   
+  mutate(escolaridade = as.factor(case_when( # instruction
+    # ~ "sem escolaridade",
+    CS_ESCOL_N == 0 | CS_ESCOL_N == 1 | CS_ESCOL_N == 2 ~ "até fundamental",
+    CS_ESCOL_N == 3 ~ "médio",
+    CS_ESCOL_N == 4 ~ "superior",
+    CS_ESCOL_N == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>% 
+  mutate(vacina = as.factor(case_when( #vacine
+    VACINA == 1  ~ "sim",
+    VACINA == 2 ~ "não",
+    VACINA == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>% 
+  mutate(febre = as.factor(case_when( # fever
+    FEBRE == 1 ~ "sim",
+    FEBRE == 2 ~ "não",
+    FEBRE == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>% 
+  mutate(tosse = as.factor(case_when( # cough
+    TOSSE == 1 ~ "sim",
+    TOSSE == 2 ~ "não",
+    TOSSE == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>% 
+  mutate(garganta = as.factor(case_when( # throat
+    GARGANTA == 1 ~ "sim",
+    GARGANTA  == 2 ~ "não",
+    GARGANTA == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>% 
+  mutate(dispneia = as.factor(case_when( # dyspnea
+    DISPNEIA == 1 ~ "sim",
+    DISPNEIA == 2 ~ "não",
+    DISPNEIA == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%
+  mutate(desc_resp = as.factor(case_when( # respiratory distress
+    DESC_RESP == 1 ~ "sim",
+    DESC_RESP == 2 ~ "não",
+    DESC_RESP == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%
+  mutate(saturacao = as.factor(case_when( # saturation
+    SATURACAO == 1 ~ "sim",
+    SATURACAO == 2 ~ "não",
+    SATURACAO == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%
+  mutate(diarreia = as.factor(case_when( # diarrhea
+    DIARREIA == 1 ~ "sim",
+    DIARREIA == 2 ~ "não",
+    DIARREIA == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>% 
+  mutate(cardiopatia = as.factor(case_when( # heart disease
+    CARDIOPATI == 1 ~ "sim",
+    CARDIOPATI == 2 ~ "não",
+    CARDIOPATI == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%
+  mutate(pneumopatia = as.factor(case_when( # lung disease
+    PNEUMOPATI == 1 ~ "sim",
+    PNEUMOPATI == 2 ~ "não",
+    PNEUMOPATI == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%
+  mutate(renal = as.factor(case_when( # kidney disease
+    RENAL == 1 ~ "sim",
+    RENAL == 2 ~ "não",
+    RENAL == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>%
+  mutate(obesidade = as.factor(case_when( # obesity
+    OBESIDADE == 1 ~ "sim",
+    OBESIDADE == 2 ~ "não",
+    OBESIDADE == 9 ~ "ignorado",
+    TRUE ~ "em branco"))
+  ) %>% 
+  dplyr::select(!where(is.numeric), idade, -c(ano, DT_SIN_PRI,DT_NOTIFIC,DT_INTERNA,
+                                              sexo,SG_UF,classi_gesta_puerp)) %>% # pneumopatia, saturacao, renal, obesidade, desc_resp, dispneia,
+  # mutate_if(is.factor, as.numeric) %>% 
+  drop_na() 
+
+
+data_categorico2 <- data_categorico %>% 
+  as.data.frame()
+
+data_categorico <- data_categorico %>% 
+  as_tibble() 
+
+```
+
+### Smote NC
+
+```{r}
+# Train/test data -----------
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+srag_test <- testing(srag_split)
+
+# Recipe  -----------------
+lr_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) %>%
+  themis::step_smotenc(classi_fin,seed = 69) %>% 
+  step_dummy(all_nominal(), -classi_fin)  
+
+# Specification -----------------
+
+lr_spec <- logistic_reg() %>%
+  set_mode("classification") %>%
+  set_engine("glm")
+
+# Cross-validation --------
+
+set.seed(456)
+
+srag_folds <- vfold_cv(srag_train, v = 10)
+
+# grid <- grid_regular(
+#   penalty(range = c(-4, -1)),
+#   levels = 20
+# )
+
+# Workflow ----------------
+
+lr_wf <- workflow() %>%
+  add_model(lr_spec) %>%
+  add_recipe(lr_rec)
+
+# Resamples ---------------
+
+lr_metrics <- metric_set(roc_auc, sensitivity, specificity, ppv, npv)
+
+
+lr_res <- lr_wf %>% 
+  fit_resamples(
+    resamples = srag_folds,
+    metrics = lr_metrics,
+    control = control_resamples(save_pred = TRUE)
+) 
+
+# metrics
+
+collect_metrics(lr_res)
+
+# best auc
+
+best_auc <- select_best(lr_res, "roc_auc")
+
+# Final fit model ---------
+
+lr_final <- finalize_workflow(
+  lr_wf,
+  best_auc
+)
+
+final_fit <- last_fit(
+  lr_final, 
+  srag_split,
+)
+
+# confusion matrix
+
+conf_mat(
+  data = final_fit$.predictions[[1]],
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+# Predictions -------------
+
+preds <- final_fit %>% 
+  collect_predictions()
+
+# performance
+
+summary(conf_mat(preds, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+
+
+```
+
+
+### Adasyn distancia HEOM
+
+```{r}
+# treino e teste
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico2, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+
+srag_test <- testing(srag_split)
+
+### 
+
+### Reamostragem 
+
+set.seed(69)
+
+srag_train <-  AdasynClassif(classi_fin ~., srag_train,dist="HEOM")
+
+# Recipe  -----------------
+lr_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) #%>%
+  #step_dummy(all_nominal(), -classi_fin)  
+
+# Specification -----------------
+
+lr_spec <- logistic_reg() %>%
+  set_mode("classification") %>%
+  set_engine("glm")
+
+# Cross-validation --------
+
+set.seed(456)
+
+srag_folds <- vfold_cv(srag_train, v = 10)
+
+# grid <- grid_regular(
+#   penalty(range = c(-4, -1)),
+#   levels = 20
+# )
+
+# Workflow ----------------
+
+lr_wf <- workflow() %>%
+  add_model(lr_spec) %>%
+  add_recipe(lr_rec)
+
+# Resamples ---------------
+
+lr_metrics <- metric_set(roc_auc, sensitivity, specificity, ppv, npv)
+
+
+lr_res <- lr_wf %>% 
+  fit_resamples(
+    resamples = srag_folds,
+    metrics = lr_metrics,
+    control = control_resamples(save_pred = TRUE)
+) 
+
+# metrics
+
+collect_metrics(lr_res)
+
+# best auc
+
+best_auc <- select_best(lr_res, "roc_auc")
+
+# Final fit model ---------
+
+lr_final <- finalize_workflow(
+  lr_wf,
+  best_auc
+)
+
+# final_fit <- last_fit(
+#   lr_final, 
+#   srag_split,
+# )
+
+
+final_fit <- lr_final %>% fit(srag_train)
+
+srag_test$`.pred_class` <- predict(final_fit,srag_test)[[1]]
+
+# confusion matrix
+
+conf_mat(
+  data = srag_test,
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+# # Predictions -------------
+# 
+# preds <- final_fit %>% 
+#   collect_predictions()
+
+# performance
+
+summary(conf_mat(srag_test, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+
+```
+
+
+### Smote distencia HEOM
+
+```{r}
+# treino e teste
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico2, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+
+srag_test <- testing(srag_split)
+
+### 
+
+### Reamostragem 
+
+set.seed(69)
+
+srag_train <-  SmoteClassif(classi_fin ~., srag_train,dist="HEOM")
+
+# Recipe  -----------------
+lr_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) #%>%
+  #step_dummy(all_nominal(), -classi_fin)  
+
+# Specification -----------------
+
+lr_spec <- logistic_reg() %>%
+  set_mode("classification") %>%
+  set_engine("glm")
+
+# Cross-validation --------
+
+set.seed(456)
+
+srag_folds <- vfold_cv(srag_train, v = 10)
+
+# grid <- grid_regular(
+#   penalty(range = c(-4, -1)),
+#   levels = 20
+# )
+
+# Workflow ----------------
+
+lr_wf <- workflow() %>%
+  add_model(lr_spec) %>%
+  add_recipe(lr_rec)
+
+# Resamples ---------------
+
+lr_metrics <- metric_set(roc_auc, sensitivity, specificity, ppv, npv)
+
+
+lr_res <- lr_wf %>% 
+  fit_resamples(
+    resamples = srag_folds,
+    metrics = lr_metrics,
+    control = control_resamples(save_pred = TRUE)
+) 
+
+# metrics
+
+collect_metrics(lr_res)
+
+# best auc
+
+best_auc <- select_best(lr_res, "roc_auc")
+
+# Final fit model ---------
+
+lr_final <- finalize_workflow(
+  lr_wf,
+  best_auc
+)
+
+final_fit <- lr_final %>% fit(srag_train)
+
+srag_test$`.pred_class` <- predict(final_fit,srag_test)[[1]]
+
+# confusion matrix
+
+conf_mat(
+  data = srag_test,
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+# performance
+
+summary(conf_mat(srag_test, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+```
+
+
+### Links de tomek distancia HEOM
+
+```{r}
+# treino e teste
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico2, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+
+srag_test <- testing(srag_split)
+
+
+### Reamostragem 
+
+set.seed(69)
+
+srag_train <-  TomekClassif(classi_fin ~., srag_train,rem="maj",dist="HEOM")[[1]]
+
+# Recipe  -----------------
+lr_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) #%>%
+  #step_dummy(all_nominal(), -classi_fin)  
+
+# Specification -----------------
+
+lr_spec <- logistic_reg() %>%
+  set_mode("classification") %>%
+  set_engine("glm")
+
+# Cross-validation --------
+
+set.seed(456)
+
+credit_folds <- vfold_cv(srag_train, v = 10)
+
+# grid <- grid_regular(
+#   penalty(range = c(-4, -1)),
+#   levels = 20
+# )
+
+# Workflow ----------------
+
+lr_wf <- workflow() %>%
+  add_model(lr_spec) %>%
+  add_recipe(lr_rec)
+
+# Resamples ---------------
+
+lr_metrics <- metric_set(roc_auc, sensitivity, specificity, ppv, npv)
+
+
+lr_res <- lr_wf %>% 
+  fit_resamples(
+    resamples = srag_folds,
+    metrics = lr_metrics,
+    control = control_resamples(save_pred = TRUE)
+) 
+
+# metrics
+
+collect_metrics(lr_res)
+
+# best auc
+
+best_auc <- select_best(lr_res, "roc_auc")
+
+# Final fit model ---------
+
+lr_final <- finalize_workflow(
+  lr_wf,
+  best_auc
+)
+
+final_fit <- lr_final %>% fit(srag_train)
+
+srag_test$`.pred_class` <- predict(final_fit,srag_test)[[1]]
+
+# confusion matrix
+
+conf_mat(
+  data = srag_test,
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+# Predictions -------------
+
+# preds <- final_fit %>% 
+#   collect_predictions()
+
+# performance
+
+summary(conf_mat(srag_test, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+
+```
+
+
+
+## Reamostragem com dados numéricos e categóricos com aplicação do modelo XGBoost
+
+### Smote NC
+
+```{r}
+# Train/test data -----------
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+srag_test <- testing(srag_split)
+
+xgb_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) %>%
+  themis::step_smotenc(classi_fin,seed = 69) %>% 
+  step_dummy(all_nominal(), -classi_fin)  
+   #%>% 
+# prep()
+
+xgb_spec <- boost_tree(
+  trees = 1000,
+  tree_depth = tune(), min_n = tune(), 
+  loss_reduction = tune(),                     ## first three: model complexity
+  sample_size = tune(), mtry = tune(),         ## randomness
+  learn_rate = tune(),                         ## step size
+) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+# Grid search --------------
+
+xgb_grid <- grid_max_entropy(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), srag_train),
+  learn_rate(),
+  size = 30
+)
+
+
+# Workflow ----------------
+
+xgb_wf <- workflow() %>%
+  add_recipe(xgb_rec) %>%
+  add_model(xgb_spec) #%>% 
+#fit(srag_train)
+
+# Cross-validation --------
+
+set.seed(456)
+
+srag_folds <- vfold_cv(
+  srag_train, 
+  v = 10
+)   
+
+# Tuning ------------------
+
+xgb_metrics <- metric_set(roc_auc, sensitivity, specificity, npv, ppv)
+
+doParallel::registerDoParallel()
+
+set.seed(1011)
+
+xgb_res <- readRDS("tunning_smotenc_monografia.rds")
+# xgb_res <- 
+#   xgb_wf %>% 
+#   tune_grid(
+#     resamples = srag_folds,
+#     grid = xgb_grid,
+#     metrics = xgb_metrics,
+#     control = control_grid(save_pred = TRUE)
+#   )
+# 
+# 
+# 
+# saveRDS(xgb_res,"tunning_smotenc_monografia.rds")
+
+# metrics
+
+#collect_metrics(xgb_res)
+
+# best hyperparameters
+
+#show_best(xgb_res, "roc_auc")
+
+# best auc
+
+best_auc <- select_best(xgb_res, "roc_auc") 
+
+# Best model --------------
+
+final_xgb <- finalize_workflow(
+  xgb_wf,
+  best_auc
+)
+
+# Final fit model ---------
+
+final_fit <- last_fit(
+  final_xgb, 
+  srag_split,
+)
+
+#collect_metrics(final_fit)
+
+# ### Gráfico de pontos
+# final_xgb %>%
+#   fit(data = srag_train) %>%
+#   extract_fit_parsnip() %>%
+#   vip(geom = "point")
+# 
+# #### Variáveis importantes
+# final_fit %>%  
+#   pluck(".workflow",1) %>% 
+#   extract_fit_parsnip() %>% 
+#   vip::vip(num_features=20)
+
+# Matriz de confusão
+
+conf_mat(
+  data = final_fit$.predictions[[1]],
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+preds <- final_fit %>% 
+  collect_predictions() 
+
+summary(conf_mat(preds, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+
+```
+
+### Adasyn distancia HEOM
+
+```{r}
+# treino e teste
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico2, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+
+srag_test <- testing(srag_split)
+
+
+### Reamostragem 
+
+set.seed(69)
+
+srag_train <-  AdasynClassif(classi_fin ~., srag_train,dist="HEOM")
+
+# Recipe  -----------------
+xgb_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) %>%
+  step_dummy(all_nominal(), -classi_fin)  
+
+# Specification -----------------
+
+xgb_spec <- boost_tree(
+  trees = 1000,
+  tree_depth = tune(), min_n = tune(), 
+  loss_reduction = tune(),                     ## first three: model complexity
+  sample_size = tune(), mtry = tune(),         ## randomness
+  learn_rate = tune(),                         ## step size
+) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+# Grid search --------------
+
+xgb_grid <- grid_max_entropy(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), srag_train),
+  learn_rate(),
+  size = 30
+)
+
+
+# Workflow ----------------
+
+xgb_wf <- workflow() %>%
+  add_recipe(xgb_rec) %>%
+  add_model(xgb_spec) #%>% 
+#fit(srag_train)
+
+# Cross-validation --------
+
+set.seed(456)
+
+srag_folds <- vfold_cv(
+  srag_train, 
+  v = 10
+)   
+
+# Tuning ------------------
+
+xgb_metrics <- metric_set(roc_auc, sensitivity, specificity, npv, ppv)
+
+doParallel::registerDoParallel()
+
+set.seed(1011)
+
+# xgb_res <- 
+#   xgb_wf %>% 
+#   tune_grid(
+#     resamples = srag_folds,
+#     grid = xgb_grid,
+#     metrics = xgb_metrics,
+#     control = control_grid(save_pred = TRUE)
+#   )
+
+
+
+xgb_res <- readRDS("tunning_adasynheom_monografia.rds")
+
+# metrics
+
+#collect_metrics(xgb_res)
+
+# best hyperparameters
+
+#show_best(xgb_res, "roc_auc")
+
+# best auc
+
+best_auc <- select_best(xgb_res, "roc_auc")
+
+# Best model --------------
+
+final_xgb <- finalize_workflow(
+  xgb_wf,
+  best_auc
+)
+
+# final_fit <- last_fit(
+#   lr_final, 
+#   srag_split,
+# )
+
+
+final_fit <- final_xgb %>% fit(srag_train)
+
+srag_test$`.pred_class` <- predict(final_fit,srag_test)[[1]]
+
+
+
+# confusion matrix
+
+conf_mat(
+  data = srag_test,
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+# # Predictions -------------
+# 
+# preds <- final_fit %>% 
+#   collect_predictions()
+
+# performance
+
+summary(conf_mat(srag_test, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+
+```
+
+### Smote distancia HEOM
+
+```{r}
+# treino e teste
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico2, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+
+srag_test <- testing(srag_split)
+
+
+### Reamostragem 
+
+set.seed(69)
+
+srag_train <-  SmoteClassif(classi_fin ~., srag_train,dist="HEOM")
+
+# Recipe  -----------------
+xgb_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) %>%
+  step_dummy(all_nominal(), -classi_fin)  
+
+# Specification -----------------
+
+xgb_spec <- boost_tree(
+  trees = 1000,
+  tree_depth = tune(), min_n = tune(), 
+  loss_reduction = tune(),                     ## first three: model complexity
+  sample_size = tune(), mtry = tune(),         ## randomness
+  learn_rate = tune(),                         ## step size
+) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+# Grid search --------------
+
+xgb_grid <- grid_max_entropy(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), srag_train),
+  learn_rate(),
+  size = 30
+)
+
+
+# Workflow ----------------
+
+xgb_wf <- workflow() %>%
+  add_recipe(xgb_rec) %>%
+  add_model(xgb_spec) #%>% 
+#fit(srag_train)
+
+# Cross-validation --------
+
+set.seed(456)
+
+srag_folds <- vfold_cv(
+  srag_train, 
+  v = 10
+)   
+
+# Tuning ------------------
+
+xgb_metrics <- metric_set(roc_auc, sensitivity, specificity, npv, ppv)
+
+doParallel::registerDoParallel()
+
+set.seed(1011)
+
+# xgb_res <- 
+#   xgb_wf %>% 
+#   tune_grid(
+#     resamples = srag_folds,
+#     grid = xgb_grid,
+#     metrics = xgb_metrics,
+#     control = control_grid(save_pred = TRUE)
+#   )
+
+
+xgb_res <-  readRDS("tunning_smoteheom_monografia.rds")
+
+# metrics
+
+#collect_metrics(xgb_res)
+
+# best hyperparameters
+
+#show_best(xgb_res, "roc_auc")
+
+# best auc
+
+best_auc <- select_best(xgb_res, "roc_auc") 
+
+# Best model --------------
+
+final_xgb <- finalize_workflow(
+  xgb_wf,
+  best_auc
+)
+
+final_fit <- final_xgb %>% fit(srag_train)
+
+srag_test$`.pred_class` <- predict(final_fit,srag_test)[[1]]
+
+
+# confusion matrix
+
+conf_mat(
+  data = srag_test,
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+# performance
+
+summary(conf_mat(srag_test, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+```
+
+### Links de tomek distancia HEOM
+
+```{r}
+# treino e teste
+
+set.seed(123)
+
+srag_split <- initial_split(
+  data_categorico2, 
+  prob = 0.7
+)
+
+srag_train <- training(srag_split)
+
+
+srag_test <- testing(srag_split)
+
+
+### Reamostragem 
+
+set.seed(69)
+
+srag_train <-  TomekClassif(classi_fin ~., srag_train,rem="maj",dist="HEOM")[[1]]
+
+# Recipe  -----------------
+xgb_rec <- recipe(classi_fin ~ ., data = srag_train) %>% 
+  step_normalize(idade) %>%
+  step_dummy(all_nominal(), -classi_fin)  
+
+# Specification -----------------
+
+xgb_spec <- boost_tree(
+  trees = 1000,
+  tree_depth = tune(), min_n = tune(), 
+  loss_reduction = tune(),                     ## first three: model complexity
+  sample_size = tune(), mtry = tune(),         ## randomness
+  learn_rate = tune(),                         ## step size
+) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+# Grid search --------------
+
+xgb_grid <- grid_max_entropy(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), srag_train),
+  learn_rate(),
+  size = 30
+)
+
+
+# Workflow ----------------
+
+xgb_wf <- workflow() %>%
+  add_recipe(xgb_rec) %>%
+  add_model(xgb_spec) #%>% 
+#fit(srag_train)
+
+# Cross-validation --------
+
+set.seed(456)
+
+srag_folds <- vfold_cv(
+  srag_train, 
+  v = 10
+)   
+
+# Tuning ------------------
+
+xgb_metrics <- metric_set(roc_auc, sensitivity, specificity, npv, ppv)
+
+doParallel::registerDoParallel()
+
+set.seed(1011)
+
+# xgb_res <- 
+#   xgb_wf %>% 
+#   tune_grid(
+#     resamples = srag_folds,
+#     grid = xgb_grid,
+#     metrics = xgb_metrics,
+#     control = control_grid(save_pred = TRUE)
+#   )
+
+
+
+xgb_res <- readRDS("tunning_tomekheom_monografia.rds")
+
+# metrics
+
+#collect_metrics(xgb_res)
+
+# best hyperparameters
+
+#show_best(xgb_res, "roc_auc")
+
+# best auc
+
+best_auc <- select_best(xgb_res, "roc_auc")
+
+# Best model --------------
+
+final_xgb <- finalize_workflow(
+  xgb_wf,
+  best_auc
+)
+
+final_fit <- final_xgb %>% fit(srag_train)
+
+srag_test$`.pred_class` <- predict(final_fit,srag_test)[[1]]
+
+# confusion matrix
+
+conf_mat(
+  data = srag_test,
+  truth = classi_fin,
+  estimate = .pred_class
+) %>% 
+  autoplot(type = "heatmap")
+
+# Predictions -------------
+
+# preds <- final_fit %>% 
+#   collect_predictions()
+
+# performance
+
+summary(conf_mat(srag_test, classi_fin, .pred_class)) %>%
+  dplyr::select(-.estimator) %>%
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4)
+
+```
+
+
+
+## Estudos de simulação
+
+```{r}
+data3 %>%
+  #filter(classi_fin == "Não COVID-19") %>%
+  ggplot(aes(idade)) +
+  geom_histogram(color="pink", breaks = seq(from=10,to=55,by=2)) + #scale_colour_viridis_d(option = "turbo") +
+  xlab("idade") + ylab("frequência absoluta")
+  # ylab("Taxas de casos") + labs(col = "câncer") +
+  #theme(axis.text.x = element_text(angle = 45)) #+
+  # scale_x_date(labels = date_format("%h %y"),
+  #              breaks = seq(
+  #                from = min(data3$dt_sint),
+  #                to = max(data3$dt_sint),
+  #                by = "month"
+  #              ))
+
+datasummary1
+```
+
+```{r}
+data_categorico
+
+#"raca"         "escolaridade" "vacina"       "febre"       
+#  "tosse"        "garganta"     "dispneia"     "desc_resp"    "saturacao"   
+# "diarreia"     "cardiopatia"  "pneumopatia"  "renal"        "obesidade" 
+
+
+with(data_categorico,ctable(raca,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(escolaridade,classi_fin))$proportions[1:5,1]
+with(data_categorico,ctable(vacina,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(febre,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(tosse,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(garganta,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(dispneia,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(desc_resp,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(saturacao,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(diarreia,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(cardiopatia,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(pneumopatia,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(renal,classi_fin))$proportions[1:4,1]
+with(data_categorico,ctable(obesidade,classi_fin))$proportions[1:4,1]
+```
+
+
+
