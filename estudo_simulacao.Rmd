@@ -39,6 +39,7 @@ theme_set(theme_minimal())
 library(Hmisc)
 library(gamlss)
 library(Rlab)
+library(caret)
 ```
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
@@ -65,144 +66,6 @@ dados <- dataset  %>% #3.511.859
     filter(!is.na(classi_gesta_puerp)) # 38.877 points
 
 freq(dados$CLASSI_FIN)
-
-# dados1 <- dados
-
-# data <- dados %>% 
-#     mutate(classi_fin = as.factor(case_when(
-#       CLASSI_FIN == 1 ~ "Não COVID-19",
-#       CLASSI_FIN == 2 ~ "Não COVID-19",
-#       CLASSI_FIN == 3 ~ "Não COVID-19",
-#       CLASSI_FIN == 5 ~ "COVID-19",
-#       TRUE ~ NA_character_))
-#     ) %>% 
-#     filter(!is.na(classi_fin)) %>%  # 20.619 points
-#     mutate(raca = as.factor(case_when( # race
-#       CS_RACA == 1 ~ "branca",
-#       CS_RACA == 2 | CS_RACA == 3 | CS_RACA == 4 |
-#         CS_RACA == 5 ~ "não branca",
-#       CS_RACA == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%   
-#     mutate(escolaridade = as.factor(case_when( # instruction
-#       # ~ "sem escolaridade",
-#       CS_ESCOL_N == 0 | CS_ESCOL_N == 1 | CS_ESCOL_N == 2 ~ "até fundamental",
-#       CS_ESCOL_N == 3 ~ "médio",
-#       CS_ESCOL_N == 4 ~ "superior",
-#       CS_ESCOL_N == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>% 
-#     mutate(vacina = as.factor(case_when( #vacine
-#       VACINA == 1  ~ "sim",
-#       VACINA == 2 ~ "não",
-#       VACINA == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>% 
-#     mutate(febre = as.factor(case_when( # fever
-#       FEBRE == 1 ~ "sim",
-#       FEBRE == 2 ~ "não",
-#       FEBRE == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>% 
-#     mutate(tosse = as.factor(case_when( # cough
-#       TOSSE == 1 ~ "sim",
-#       TOSSE == 2 ~ "não",
-#       TOSSE == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>% 
-#     mutate(garganta = as.factor(case_when( # throat
-#       GARGANTA == 1 ~ "sim",
-#       GARGANTA  == 2 ~ "não",
-#       GARGANTA == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>% 
-#     mutate(dispneia = as.factor(case_when( # dyspnea
-#       DISPNEIA == 1 ~ "sim",
-#       DISPNEIA == 2 ~ "não",
-#       DISPNEIA == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%
-#     mutate(desc_resp = as.factor(case_when( # respiratory distress
-#       DESC_RESP == 1 ~ "sim",
-#       DESC_RESP == 2 ~ "não",
-#       DESC_RESP == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%
-#     mutate(saturacao = as.factor(case_when( # saturation
-#       SATURACAO == 1 ~ "sim",
-#       SATURACAO == 2 ~ "não",
-#       SATURACAO == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%
-#     mutate(diarreia = as.factor(case_when( # diarrhea
-#       DIARREIA == 1 ~ "sim",
-#       DIARREIA == 2 ~ "não",
-#       DIARREIA == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>% 
-#     mutate(cardiopatia = as.factor(case_when( # heart disease
-#       CARDIOPATI == 1 ~ "sim",
-#       CARDIOPATI == 2 ~ "não",
-#       CARDIOPATI == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%
-#     mutate(pneumopatia = as.factor(case_when( # lung disease
-#       PNEUMOPATI == 1 ~ "sim",
-#       PNEUMOPATI == 2 ~ "não",
-#       PNEUMOPATI == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%
-#     mutate(renal = as.factor(case_when( # kidney disease
-#       RENAL == 1 ~ "sim",
-#       RENAL == 2 ~ "não",
-#       RENAL == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%
-#     mutate(obesidade = as.factor(case_when( # obesity
-#       OBESIDADE == 1 ~ "sim",
-#       OBESIDADE == 2 ~ "não",
-#       OBESIDADE == 9 ~ "ignorado",
-#       TRUE ~ "em branco"))
-#     ) %>%
-#   mutate(uti = as.factor(case_when(
-#     UTI == 1 ~ "Sim",
-#     UTI == 2 ~ "Não",
-#     UTI == 9 ~ "Ignorado",
-#     TRUE ~ "Em branco"))
-#   ) %>%
-#   mutate(suport_ven = as.factor(case_when(
-#     SUPORT_VEN == 1 ~ "sim, invasivo",
-#     SUPORT_VEN == 2 ~ "sim, não invasivo",
-#     SUPORT_VEN == 3 ~ "não",
-#     SUPORT_VEN == 9 ~ "ignorado",
-#     TRUE ~ "em branco"))
-#   ) %>%
-#   mutate(evolucao = as.factor(case_when(
-#     EVOLUCAO == 1 ~ "cura",
-#     EVOLUCAO == 2 ~ "óbito",
-#     EVOLUCAO == 3 ~ "óbito",
-#     EVOLUCAO == 9 ~ "ignorado",
-#     TRUE ~ "em branco"))
-#   ) %>% 
-#   mutate(dt_notific = as.Date(DT_NOTIFIC, format = "%d/%m/%Y"),
-#          dt_sint = as.Date(DT_SIN_PRI, format = "%d/%m/%Y"),
-#          dt_interna = as.Date(DT_INTERNA, format = "%d/%m/%Y")
-#   ) %>% 
-#   mutate(
-#     tempo_sintomas_hosp = as.numeric(dt_interna - dt_sint),
-#     tempo_sintomas_notific = as.numeric(dt_notific - dt_sint)
-#   ) 
-# 
-# 
-# # dados numéricos
-# data1 <- data %>% 
-#   select(idade,tempo_sintomas_notific,tempo_sintomas_hosp,classi_fin) 
-# 
-# data3 <- data %>% 
-#   select(idade,dt_sint,ano,tempo_sintomas_notific,tempo_sintomas_hosp,classi_fin) 
-# 
-# data2 <- data %>%
-#   select(!where(is.numeric),idade,tempo_sintomas_notific,tempo_sintomas_hosp, -c(ano, DT_SIN_PRI,DT_NOTIFIC,DT_INTERNA,sexo)) 
 
 data_categorico <- dados %>% 
   mutate(classi_fin = as.factor(case_when(
@@ -305,6 +168,7 @@ data_categorico <- dados %>%
   # mutate_if(is.factor, as.numeric) %>% 
   drop_na() 
 
+data_categorico$classi_fin <- relevel(data_categorico$classi_fin,ref = "Não COVID-19")
 
 data_categorico2 <- data_categorico %>% 
   as.data.frame()
@@ -312,7 +176,38 @@ data_categorico2 <- data_categorico %>%
 data_categorico <- data_categorico %>% 
   as_tibble() 
 
+data_categorico$raca <- factor(data_categorico$raca,levels = c("não branca","branca","em branco","ignorado"))
+data_categorico$escolaridade <- factor(data_categorico$escolaridade,levels = c("até fundamental","médio","superior","em branco","ignorado"))
+data_categorico$vacina <- factor(data_categorico$vacina,levels = c("não","sim","em branco","ignorado"))
+data_categorico$febre <- factor(data_categorico$febre,levels = c("não","sim","em branco","ignorado"))
+data_categorico$tosse <- factor(data_categorico$tosse,levels = c("não","sim","em branco","ignorado"))
+data_categorico$garganta <- factor(data_categorico$garganta,levels = c("não","sim","em branco","ignorado"))
+data_categorico$dispneia <- factor(data_categorico$dispneia,levels = c("não","sim","em branco","ignorado"))
+data_categorico$desc_resp <- factor(data_categorico$desc_resp,levels = c("não","sim","em branco","ignorado"))
+data_categorico$saturacao <- factor(data_categorico$saturacao,levels = c("não","sim","em branco","ignorado"))
+data_categorico$diarreia <- factor(data_categorico$diarreia,levels = c("não","sim","em branco","ignorado"))
+data_categorico$cardiopatia <- factor(data_categorico$cardiopatia,levels = c("não","sim","em branco","ignorado"))
+data_categorico$pneumopatia <- factor(data_categorico$pneumopatia,levels = c("não","sim","em branco","ignorado"))
+data_categorico$renal <- factor(data_categorico$renal,levels = c("não","sim","em branco","ignorado"))
+data_categorico$obesidade <- factor(data_categorico$obesidade,levels = c("não","sim","em branco","ignorado"))
 
+data3 <- data_categorico %>% 
+  mutate(raca = as.factor(as.numeric(raca)),
+         escolaridade = as.factor(as.numeric(escolaridade)),
+         vacina = as.factor(as.numeric(vacina)),
+         febre = as.factor(as.numeric(febre)),
+         tosse = as.factor(as.numeric(tosse)),
+         garganta = as.factor(as.numeric(garganta)),
+         dispneia = as.factor(as.numeric(dispneia)),
+         desc_resp = as.factor(as.numeric(desc_resp)),
+         saturacao = as.factor(as.numeric(saturacao)),
+         diarreia = as.factor(as.numeric(diarreia)),
+         cardiopatia = as.factor(as.numeric(cardiopatia)),
+         pneumopatia = as.factor(as.numeric(pneumopatia)),
+         renal = as.factor(as.numeric(renal)),
+         obesidade = as.factor(as.numeric(obesidade)))
+
+rm(dados,dataset)
 ```
 
 ## Idade
@@ -359,164 +254,99 @@ data_categorico %>%
 
 datasummary((classi_fin) ~  idade*(n+media+DP+mediana+q25+q75+IQR),
             data = data_categorico, output = 'markdown')
-
-idade_sim <- rGG(21366,mu=exp(3.422),sigma=exp(-1.427), nu=2.133)
 ```
 
 
 ## Raça
 
 ```{r}
-data_categorico$raca <- factor(data_categorico$raca,levels = c("não branca","branca","em branco","ignorado"))
-
 with(data_categorico,ctable(raca,classi_fin,prop="c"))$proportions[1:4,3]
-
-raca_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(raca,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
-
-# rmultinom(1, size = 4, prob = c(as.numeric(
-#   with(data_categorico, ctable(raca, classi_fin, prop = "c"))$proportions[1:4, 3]
-# )))
 
 ```
 
 ## Escolaridade
 
 ```{r}
-data_categorico$escolaridade <- factor(data_categorico$escolaridade,levels = c("até fundamental","médio","superior","em branco","ignorado"))
 with(data_categorico,ctable(escolaridade,classi_fin,prop="c"))
-
-with(data_categorico,ctable(escolaridade,classi_fin,prop="c"))$proportions[1:5,3]
-
-esc_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(escolaridade,classi_fin,prop="c"))$proportions[1:5,3]))),21366)
 
 ```
 
 ## Vacina 
 
 ```{r}
-data_categorico$vacina <- factor(data_categorico$vacina,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(vacina,classi_fin,prop="c"))
-
-vacina_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(vacina,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
-
 ```
 
 
 ## Febre 
 
 ```{r}
-data_categorico$febre <- factor(data_categorico$febre,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(febre,classi_fin,prop="c"))
-
-febre_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(febre,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
-
 ```
 
 
 ## Tosse 
 
 ```{r}
-data_categorico$tosse <- factor(data_categorico$tosse,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(tosse,classi_fin,prop="c"))
-
-tosse_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(tosse,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 
 ## Garganta 
 
 ```{r}
-data_categorico$garganta <- factor(data_categorico$garganta,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(garganta,classi_fin,prop="c"))
-
-garganta_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(garganta,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 
 ## Dispneia 
 
 ```{r}
-data_categorico$dispneia <- factor(data_categorico$dispneia,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(dispneia,classi_fin,prop="c"))
-
-dispneia_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(dispneia,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 
 ## Desconforto respiratório
 
 ```{r}
-data_categorico$desc_resp <- factor(data_categorico$desc_resp,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(desc_resp,classi_fin,prop="c"))
-
-desc_resp_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(desc_resp,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 
 ## Saturação 
 
 ```{r}
-data_categorico$saturacao <- factor(data_categorico$saturacao,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(saturacao,classi_fin,prop="c"))
-
-saturacao_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(saturacao,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 ## Diarreia
 
 ```{r}
-data_categorico$diarreia <- factor(data_categorico$diarreia,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(diarreia,classi_fin,prop="c"))
-
-diarreia_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(diarreia,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 ## Cardiopatia
 
 ```{r}
-data_categorico$cardiopatia <- factor(data_categorico$cardiopatia,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(cardiopatia,classi_fin,prop="c"))
-
-cardiopatia_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(cardiopatia,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 ## Pneumopatia
 
 ```{r}
-data_categorico$pneumopatia <- factor(data_categorico$pneumopatia,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(pneumopatia,classi_fin,prop="c"))
-
-pneumopatia_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(pneumopatia,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 ## Renal
 
 ```{r}
-data_categorico$renal <- factor(data_categorico$renal,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(renal,classi_fin,prop="c"))
-
-renal_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(renal,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 ## Obesidade
 
 ```{r}
-data_categorico$obesidade <- factor(data_categorico$obesidade,levels = c("não","sim","em branco","ignorado"))
-
 with(data_categorico,ctable(obesidade,classi_fin,prop="c"))
-
-obesidade_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(obesidade,classi_fin,prop="c"))$proportions[1:4,3]))),21366)
 ```
 
 # Modelo logístico
@@ -524,22 +354,6 @@ obesidade_sim <- rMultinom(rbind(c(as.numeric(with(data_categorico,ctable(obesid
 ```{r}
 # modelo <- glm(classi_fin ~ raca + escolaridade + vacina + febre + tosse + garganta + dispneia + desc_resp + saturacao + diarreia + cardiopatia + pneumopatia + renal + obesidade + idade, data=data_categorico, family = "binomial")
 # summary(modelo)
-
-data3 <- data_categorico %>% 
-  mutate(raca = as.factor(as.numeric(raca)),
-         escolaridade = as.factor(as.numeric(escolaridade)),
-         vacina = as.factor(as.numeric(vacina)),
-         febre = as.factor(as.numeric(febre)),
-         tosse = as.factor(as.numeric(tosse)),
-         garganta = as.factor(as.numeric(garganta)),
-         dispneia = as.factor(as.numeric(dispneia)),
-         desc_resp = as.factor(as.numeric(desc_resp)),
-         saturacao = as.factor(as.numeric(saturacao)),
-         diarreia = as.factor(as.numeric(diarreia)),
-         cardiopatia = as.factor(as.numeric(cardiopatia)),
-         pneumopatia = as.factor(as.numeric(pneumopatia)),
-         renal = as.factor(as.numeric(renal)),
-         obesidade = as.factor(as.numeric(obesidade)))
 
 modelo2 <- glm(classi_fin ~., data=data3, family = "binomial")
 ```
@@ -562,19 +376,6 @@ data4 <- data.frame(raca = as.factor(as.numeric(raca_sim)),
          renal = as.factor(as.numeric(renal_sim)),
          obesidade = as.factor(as.numeric(obesidade_sim)),
          idade = idade_sim)
-
-# data_new <- fastDummies::dummy_cols(data_categorico)
-# 
-# coeficientes <- as.numeric(modelo$coefficients)
-# 
-# p = exp(coeficientes[1] + data_new[20]*coeficientes[2] + data_new[21]*coeficientes[3] +
-#           data_new[22]*coeficientes[4] + data_new[24]*coeficientes[5] +
-#           data_new[25]*coeficientes[6] + data_new[26]*coeficientes[7] + 
-#           data_new[28]*coeficientes[8] + data_new[29]*coeficientes[9] + 
-#           data_new[30]*coeficientes[10] + data_new[32]*coeficientes[11] +
-#           data_new[33]*coeficientes[12] + data_new[34]*coeficientes[13] +
-#           data_new[36]*coeficientes[14] + data_new[37]*coeficientes[15] + 
-#           data_new[38]*coeficientes[16] + )
 
 y <- predict(modelo2,data4,type="response")
 
@@ -695,340 +496,9 @@ saveRDS(betas,"betas_semreamostragem.rds")
 ## Com SMOTE NC
 
 ```{r}
-
 betas_smotenc <- list()
-
-data_categorico_smotenc <-
-    recipe(classi_fin ~., data = data3) %>%
-    step_smotenc(classi_fin,seed=69) %>%
-    prep() %>%
-    bake(new_data = NULL)
- 
-#modelo_gama_generalizado_idade <- gamlss(idade~1,family=GG,data=data_categorico_smotenc)
-
-#modelo3 <- glm(classi_fin ~., data=data_categorico_smotenc, family = "binomial")
-
-for(i in 1:1000){
-  idade_sim <- rGG(38272,
-                   mu = exp(3.3669),
-                   sigma = exp(-1.429),
-                   nu = 1.4718)
-  raca_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(raca, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  esc_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(escolaridade, classi_fin, prop = "c"))$proportions[1:5, 3]
-    ))), 38272)
-  vacina_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(vacina, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  febre_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(febre, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  tosse_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(tosse, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  garganta_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(garganta, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  dispneia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(dispneia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  desc_resp_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(desc_resp, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  saturacao_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(saturacao, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  diarreia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(diarreia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  cardiopatia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(cardiopatia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  pneumopatia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(pneumopatia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  renal_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(renal, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  obesidade_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smotenc, ctable(obesidade, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38272)
-  
-  data4 <- data.frame(
-    raca = as.factor(as.numeric(raca_sim)),
-    escolaridade = as.factor(as.numeric(esc_sim)),
-    vacina = as.factor(as.numeric(vacina_sim)),
-    febre = as.factor(as.numeric(febre_sim)),
-    tosse = as.factor(as.numeric(tosse_sim)),
-    garganta = as.factor(as.numeric(garganta_sim)),
-    dispneia = as.factor(as.numeric(dispneia_sim)),
-    desc_resp = as.factor(as.numeric(desc_resp_sim)),
-    saturacao = as.factor(as.numeric(saturacao_sim)),
-    diarreia = as.factor(as.numeric(diarreia_sim)),
-    cardiopatia = as.factor(as.numeric(cardiopatia_sim)),
-    pneumopatia = as.factor(as.numeric(pneumopatia_sim)),
-    renal = as.factor(as.numeric(renal_sim)),
-    obesidade = as.factor(as.numeric(obesidade_sim)),
-    idade = idade_sim
-  )
-  
-  p <- predict(modelo3,data4,type="response")
-
-  classi_fin_sim <- as.factor(rbern(n=38272,prob=p))
-  
-  data4$classi_fin_sim <- classi_fin_sim
-  
-  # modelo estimado
-  
-  model_sim <- glm(classi_fin_sim ~.,data=data4,family = "binomial")
-  betas_smotenc[[i]] <- as.numeric(model_sim$coefficients)
-  
-
-}
-
-saveRDS(betas_smotenc,"betas_smotenc.rds")
-```
-
-# Adasyn 
-
-```{r}
-betas_adasyn <- list()
-
-data_categorico_adasyn <- AdasynClassif(classi_fin ~.,as.data.frame(data3),dist="HEOM")
- 
-#modelo_gama_generalizado_idade <- gamlss(idade~1,family=GG,data=data_categorico_adasyn)
-
-modelo3 <- glm(classi_fin ~., data=data_categorico_adasyn, family = "binomial")
-
-for(i in 1:1000){
-  idade_sim <- rGG(38455,
-                   mu = exp(3.4149),
-                   sigma = exp(-1.099),
-                   nu = 5.4402)
-  raca_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(raca, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  esc_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(escolaridade, classi_fin, prop = "c"))$proportions[1:5, 3]
-    ))), 38455)
-  vacina_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(vacina, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  febre_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(febre, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  tosse_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(tosse, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  garganta_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(garganta, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  dispneia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(dispneia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  desc_resp_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(desc_resp, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  saturacao_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(saturacao, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  diarreia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(diarreia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  cardiopatia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(cardiopatia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  pneumopatia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(pneumopatia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  renal_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(renal, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  obesidade_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_adasyn, ctable(obesidade, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 38455)
-  
-  data4 <- data.frame(
-    raca = as.factor(as.numeric(raca_sim)),
-    escolaridade = as.factor(as.numeric(esc_sim)),
-    vacina = as.factor(as.numeric(vacina_sim)),
-    febre = as.factor(as.numeric(febre_sim)),
-    tosse = as.factor(as.numeric(tosse_sim)),
-    garganta = as.factor(as.numeric(garganta_sim)),
-    dispneia = as.factor(as.numeric(dispneia_sim)),
-    desc_resp = as.factor(as.numeric(desc_resp_sim)),
-    saturacao = as.factor(as.numeric(saturacao_sim)),
-    diarreia = as.factor(as.numeric(diarreia_sim)),
-    cardiopatia = as.factor(as.numeric(cardiopatia_sim)),
-    pneumopatia = as.factor(as.numeric(pneumopatia_sim)),
-    renal = as.factor(as.numeric(renal_sim)),
-    obesidade = as.factor(as.numeric(obesidade_sim)),
-    idade = idade_sim
-  )
-  
-  p <- predict(modelo3,data4,type="response")
-
-  classi_fin_sim <- as.factor(rbern(n=38455,prob=p))
-  
-  data4$classi_fin_sim <- classi_fin_sim
-  
-  # modelo estimado
-  
-  model_sim <- glm(classi_fin_sim ~.,data=data4,family = "binomial")
-  betas_adasyn[[i]] <- as.numeric(model_sim$coefficients)
-  
-
-}
-
-saveRDS(betas_adasyn,"betas_adasyn.rds")
-```
-
-
-## Smote 
-
-```{r}
-betas_smote <- list()
-
-data_categorico_smote <- SmoteClassif(classi_fin ~.,as.data.frame(data3),dist="HEOM")
- 
-#modelo_gama_generalizado_idade <- gamlss(idade~1,family=GG,data=data_categorico_smote)
-
-modelo3 <- glm(classi_fin ~., data=data_categorico_smote, family = "binomial")
-
-for(i in 1:1000){
-  idade_sim <- rGG(21366,
-                   mu = exp(3.3695),
-                   sigma = exp(-1.428),
-                   nu = 1.5466)
-  raca_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(raca, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  esc_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(escolaridade, classi_fin, prop = "c"))$proportions[1:5, 3]
-    ))), 21366)
-  vacina_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(vacina, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  febre_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(febre, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  tosse_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(tosse, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  garganta_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(garganta, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  dispneia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(dispneia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  desc_resp_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(desc_resp, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  saturacao_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(saturacao, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  diarreia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(diarreia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  cardiopatia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(cardiopatia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  pneumopatia_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(pneumopatia, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  renal_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(renal, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  obesidade_sim <-
-    rMultinom(rbind(c(as.numeric(
-      with(data_categorico_smote, ctable(obesidade, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
-  
-  data4 <- data.frame(
-    raca = as.factor(as.numeric(raca_sim)),
-    escolaridade = as.factor(as.numeric(esc_sim)),
-    vacina = as.factor(as.numeric(vacina_sim)),
-    febre = as.factor(as.numeric(febre_sim)),
-    tosse = as.factor(as.numeric(tosse_sim)),
-    garganta = as.factor(as.numeric(garganta_sim)),
-    dispneia = as.factor(as.numeric(dispneia_sim)),
-    desc_resp = as.factor(as.numeric(desc_resp_sim)),
-    saturacao = as.factor(as.numeric(saturacao_sim)),
-    diarreia = as.factor(as.numeric(diarreia_sim)),
-    cardiopatia = as.factor(as.numeric(cardiopatia_sim)),
-    pneumopatia = as.factor(as.numeric(pneumopatia_sim)),
-    renal = as.factor(as.numeric(renal_sim)),
-    obesidade = as.factor(as.numeric(obesidade_sim)),
-    idade = idade_sim
-  )
-  
-  p <- predict(modelo3,data4,type="response")
-
-  classi_fin_sim <- as.factor(rbern(n=21366,prob=p))
-  
-  data4$classi_fin_sim <- classi_fin_sim
-  
-  # modelo estimado
-  
-  model_sim <- glm(classi_fin_sim ~.,data=data4,family = "binomial")
-  betas_smote[[i]] <- as.numeric(model_sim$coefficients)
-  
-
-}
-
-saveRDS(betas_smote,"betas_smote.rds")
-```
-
-## reamostragem depois
-
-## Com SMOTE NC
-
-```{r}
-
-betas_smotenc <- list()
+frequencias_classi_fn <- list()
+medidas <- list
  
 #modelo_gama_generalizado_idade <- gamlss(idade~1,family=GG,data=data_categorico_smotenc)
 
@@ -1121,23 +591,54 @@ for(i in 1:1000){
   
   data4$classi_fin_sim <- classi_fin_sim
   
+  frequencias_classi_fn[[i]] <- data.frame(freq(data4$classi_fin_sim))$Freq[1:2]
+  
+  data_split <- initial_split(
+    data4, 
+    prob = 0.7
+  )
+  data_train <- training(data_split)
+  
+  data_test <- testing(data_split)
+  
   # modelo estimado
   
-  data_categorico_smotenc <-
-    recipe(classi_fin_sim ~., data = data4) %>%
-    step_smotenc(classi_fin_sim) %>%
+  data_train_smotenc <-
+    recipe(classi_fin_sim ~., data = data_train) %>%
+    step_smotenc(classi_fin_sim,seed=(i+69)) %>%
     prep() %>%
     bake(new_data = NULL)
   
-  model_sim <- glm(classi_fin_sim ~.,data=data_categorico_smotenc,family = "binomial")
+  model_sim <- glm(classi_fin_sim ~.,data=data_train_smotenc,family = "binomial")
+  
+  treshold <- 0.5
+  
+  data_test$pred  <- predict(model_sim,data_test,type="response")
+  
+  preds <- ifelse(data_test$pred >treshold,1,0)
+  
+  t <-
+    threshold_perf(data_test, classi_fin_sim, pred, thresholds = seq(0, 1, by = 0.0025)) %>%
+    filter(.metric == "distance") %>%
+    filter(.estimate == max(.estimate)) %>%
+    pull(.threshold)
+  
+  
+  data_test<- data_test %>% 
+    mutate(new_preds = factor(ifelse(pred >= t, 1, 0)))
+  
+  medidas[[i]] <-
+    confusionMatrix(as.factor(data_test$new_preds), data_test$classi_fin_sim)$byClass
+  
   betas_smotenc[[i]] <- as.numeric(model_sim$coefficients)
   
 
 }
 
-saveRDS(betas_smotenc,"betas_smotenc2.rds")
+saveRDS(betas_smotenc,"betas_smotenc.rds")
 
 ```
+
 
 # Adasyn 
 
@@ -1150,6 +651,8 @@ betas_adasyn2 <- list()
 
 for(i in 1:1000){
   
+  set.seed(i+69)
+  
   idade_sim <- rGG(21366,
                    mu = exp(3.422),
                    sigma = exp(-1.427),
@@ -1234,6 +737,16 @@ for(i in 1:1000){
   classi_fin_sim <- as.factor(rbern(n=21366,prob=p))
   
   data4$classi_fin_sim <- classi_fin_sim
+
+  data_split <- initial_split(
+    data4, 
+    prob = 0.7
+  )
+  data_train <- training(data_split)
+  
+  data_test <- testing(data_split)
+  
+  
   
   # modelo estimado
   
