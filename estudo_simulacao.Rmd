@@ -498,7 +498,7 @@ saveRDS(betas,"betas_semreamostragem.rds")
 ```{r}
 betas_smotenc <- list()
 frequencias_classi_fn <- list()
-medidas <- list
+medidas <- list()
  
 #modelo_gama_generalizado_idade <- gamlss(idade~1,family=GG,data=data_categorico_smotenc)
 
@@ -636,7 +636,8 @@ for(i in 1:1000){
 }
 
 saveRDS(betas_smotenc,"betas_smotenc.rds")
-
+saveRDS(frequencias_classi_fn,"frequencias_classi_fn_smotenc.rds")
+saveRDS(medidas,"medidas_smotenc.rds")
 ```
 
 
