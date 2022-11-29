@@ -644,8 +644,10 @@ saveRDS(medidas,"medidas_smotenc.rds")
 # Adasyn 
 
 ```{r}
-betas_adasyn2 <- list()
- 
+betas_adasyn <- list()
+frequencias_classi_fn <- list()
+medidas <- list()
+
 #modelo_gama_generalizado_idade <- gamlss(idade~1,family=GG,data=data_categorico_adasyn)
 
 #modelo3 <- glm(classi_fin ~., data=data_categorico_adasyn, family = "binomial")
@@ -734,11 +736,14 @@ for(i in 1:1000){
   )
   
   p <- predict(modelo2,data4,type="response")
-
+  
   classi_fin_sim <- as.factor(rbern(n=21366,prob=p))
   
   data4$classi_fin_sim <- classi_fin_sim
-
+  
+  
+  frequencias_classi_fn[[i]] <- data.frame(freq(data4$classi_fin_sim))$Freq[1:2]
+  
   data_split <- initial_split(
     data4, 
     prob = 0.7
@@ -747,19 +752,41 @@ for(i in 1:1000){
   
   data_test <- testing(data_split)
   
+  # modelo estimado
   
+  data_categorico_adasyn <- AdasynClassif(classi_fin_sim ~.,as.data.frame(data_train),dist="HEOM")
+  
+  model_sim <- glm(classi_fin_sim ~.,data=data_categorico_adasyn,family = "binomial")
+  
+  treshold <- 0.5
+  
+  data_test$pred  <- predict(model_sim,data_test,type="response")
+  
+  preds <- ifelse(data_test$pred >treshold,1,0)
+  
+  t <-
+    threshold_perf(data_test, classi_fin_sim, pred, thresholds = seq(0, 1, by = 0.0025)) %>%
+    filter(.metric == "distance") %>%
+    filter(.estimate == max(.estimate)) %>%
+    pull(.threshold)
+  
+  
+  data_test<- data_test %>% 
+    mutate(new_preds = factor(ifelse(pred >= t, 1, 0)))
+  
+  medidas[[i]] <-
+    confusionMatrix(as.factor(data_test$new_preds), data_test$classi_fin_sim)$byClass
   
   # modelo estimado
   
-  data_categorico_adasyn <- AdasynClassif(classi_fin_sim ~.,as.data.frame(data4),dist="HEOM")
+  betas_adasyn[[i]] <- as.numeric(model_sim$coefficients)
   
-  model_sim <- glm(classi_fin_sim ~.,data=data_categorico_adasyn,family = "binomial")
-  betas_adasyn2[[i]] <- as.numeric(model_sim$coefficients)
   
-
 }
 
-saveRDS(betas_adasyn2,"betas_adasyn2.rds")
+saveRDS(betas_adasyn,"betas_adasyn.rds")
+saveRDS(frequencias_classi_fn,"frequencias_classi_fn_adasyn.rds")
+saveRDS(medidas,"medidas_adasyn.rds")
 ```
 
 
@@ -767,14 +794,13 @@ saveRDS(betas_adasyn2,"betas_adasyn2.rds")
 
 ```{r}
 betas_smote <- list()
+frequencias_classi_fn <- list()
+medidas <- list()
 
-# data_categorico_smote <- SmoteClassif(classi_fin ~.,as.data.frame(data3),dist="HEOM")
- 
-#modelo_gama_generalizado_idade <- gamlss(idade~1,family=GG,data=data_categorico_smote)
-
-#modelo3 <- glm(classi_fin ~., data=data_categorico_smote, family = "binomial")
 
 for(i in 1:1000){
+  
+  set.seed(i+69)
   
   idade_sim <- rGG(21366,
                    mu = exp(3.422),
@@ -856,22 +882,52 @@ for(i in 1:1000){
   )
   
   p <- predict(modelo2,data4,type="response")
-
+  
   classi_fin_sim <- as.factor(rbern(n=21366,prob=p))
   
   data4$classi_fin_sim <- classi_fin_sim
   
+  frequencias_classi_fn[[i]] <- data.frame(freq(data4$classi_fin_sim))$Freq[1:2]
+  
+  data_split <- initial_split(
+    data4, 
+    prob = 0.7
+  )
+  data_train <- training(data_split)
+  
+  data_test <- testing(data_split)
+  
   # modelo estimado
   
-  data_categorico_smote <- SmoteClassif(classi_fin_sim ~.,as.data.frame(data4),dist="HEOM")
-  
-  # modelo estimado
+  data_categorico_smote <- SmoteClassif(classi_fin_sim ~.,as.data.frame(data_train),dist="HEOM")
   
   model_sim <- glm(classi_fin_sim ~.,data=data_categorico_smote,family = "binomial")
+  
+  treshold <- 0.5
+  
+  data_test$pred  <- predict(model_sim,data_test,type="response")
+  
+  preds <- ifelse(data_test$pred >treshold,1,0)
+  
+  t <-
+    threshold_perf(data_test, classi_fin_sim, pred, thresholds = seq(0, 1, by = 0.0025)) %>%
+    filter(.metric == "distance") %>%
+    filter(.estimate == max(.estimate)) %>%
+    pull(.threshold)
+  
+  
+  data_test<- data_test %>% 
+    mutate(new_preds = factor(ifelse(pred >= t, 1, 0)))
+  
+  medidas[[i]] <-
+    confusionMatrix(as.factor(data_test$new_preds), data_test$classi_fin_sim)$byClass
+  
   betas_smote[[i]] <- as.numeric(model_sim$coefficients)
   
-
+  
 }
 
-saveRDS(betas_smote,"betas_smote2.rds")
+saveRDS(betas_smote,"betas_smote.rds")
+saveRDS(frequencias_classi_fn,"frequencias_classi_fn_smote.rds")
+saveRDS(medidas,"medidas_smote.rds")
 ```
