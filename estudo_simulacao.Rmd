@@ -506,6 +506,8 @@ medidas <- list()
 
 for(i in 1:1000){
   
+  set.seed(i+69)
+  
   idade_sim <- rGG(21366,
                    mu = exp(3.422),
                    sigma = exp(-1.427),
@@ -931,3 +933,152 @@ saveRDS(betas_smote,"betas_smote.rds")
 saveRDS(frequencias_classi_fn,"frequencias_classi_fn_smote.rds")
 saveRDS(medidas,"medidas_smote.rds")
 ```
+
+
+
+# Análises estudos de simulação 
+
+## Análises medidas de desempenho 
+
+```{r,echo=FALSE}
+# saveRDS(betas_smotenc,"betas_smotenc.rds")
+# saveRDS(frequencias_classi_fn,"frequencias_classi_fn_smotenc.rds")
+# saveRDS(medidas,"medidas_smotenc.rds")
+# saveRDS(betas_adasyn,"betas_adasyn.rds")
+# saveRDS(frequencias_classi_fn,"frequencias_classi_fn_adasyn.rds")
+# saveRDS(medidas,"medidas_adasyn.rds")
+# saveRDS(betas_smote,"betas_smote.rds")
+# saveRDS(frequencias_classi_fn,"frequencias_classi_fn_smote.rds")
+# saveRDS(medidas,"medidas_smote.rds")
+```
+
+### Smotenc
+
+```{r, echo=TRUE}
+medidas_smotenc <- readRDS("medidas_smotenc.rds")
+
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smotenc_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smotenc_calculo[[medidas[j]]][i] <- as.numeric(medidas_smotenc[[i]][j])
+  }
+}  
+for(i in 1:11){
+  print(medidas[i])
+  print(summary(medidas_smotenc_calculo[[i]]))
+}
+```
+
+### Adasyn
+
+```{r, echo=TRUE}
+medidas_adasyn <- readRDS("medidas_adasyn.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_adasyn_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_adasyn_calculo[[medidas[j]]][i] <- as.numeric(medidas_adasyn[[i]][j])
+  }
+}  
+for(i in 1:11){
+  print(medidas[i])
+  print(summary(medidas_adasyn_calculo[[i]]))
+}
+```
+
+### Adasyn
+
+```{r, echo=TRUE}
+medidas_smote <- readRDS("medidas_smote.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smote_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smote_calculo[[medidas[j]]][i] <- as.numeric(medidas_smote[[i]][j])
+  }
+}  
+for(i in 1:11){
+  print(medidas[i])
+  print(summary(medidas_smote_calculo[[i]]))
+}
+```
+
+## Gráficos Boxplot Sensibilidade
+
+```{r}
+sensibilidade_1 <- data.frame("metodo"="Smotenc","sensibilidade"=medidas_smotenc_calculo[[medidas[1]]])
+sensibilidade_2 <- data.frame("metodo"="Adasyn","sensibilidade"=medidas_adasyn_calculo[[medidas[1]]])
+sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_calculo[[medidas[1]]])
+
+dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
+
+ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1)  +
+  labs(x = "Método",y="Sensibilidade")
+```
+
+## Gráficos Boxplot Especificidade
+
+```{r}
+especificidade_1 <- data.frame("metodo"="Smotenc","especificidade"=medidas_smotenc_calculo[[medidas[2]]])
+especificidade_2 <- data.frame("metodo"="Adasyn","especificidade"=medidas_adasyn_calculo[[medidas[2]]])
+especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_calculo[[medidas[2]]])
+
+dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
+
+ggplot(dt_especificidade,
+       aes(x = metodo, y = especificidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Método",y="Especificidade")
+```
+
+
+## Gráficos Boxplot Valor Preditivo Positivo
+
+```{r}
+pos_pred_1 <- data.frame("metodo"="Smotenc","pos_pred"=medidas_smotenc_calculo[[medidas[3]]])
+pos_pred_2 <- data.frame("metodo"="Adasyn","pos_pred"=medidas_adasyn_calculo[[medidas[3]]])
+pos_pred_3 <- data.frame("metodo"="Smote","pos_pred"=medidas_smote_calculo[[medidas[3]]])
+
+dt_pos_pred <- data.frame(rbind(pos_pred_1,pos_pred_2,pos_pred_3))
+
+ggplot(dt_pos_pred,
+       aes(x = metodo, y = pos_pred, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Método",y="Valor Preditivo Positivo")
+```
+
+## Gráficos Boxplot Valor Preditivo Negativo
+
+```{r}
+neg_pred_1 <- data.frame("metodo"="Smotenc","neg_pred"=medidas_smotenc_calculo[[medidas[4]]])
+neg_pred_2 <- data.frame("metodo"="Adasyn","neg_pred"=medidas_adasyn_calculo[[medidas[4]]])
+neg_pred_3 <- data.frame("metodo"="Smote","neg_pred"=medidas_smote_calculo[[medidas[4]]])
+
+dt_neg_pred <- data.frame(rbind(neg_pred_1,neg_pred_2,neg_pred_3))
+
+ggplot(dt_neg_pred,
+       aes(x = metodo, y = neg_pred, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Método",y="Valor Preditivo Negativo")
+```
+
