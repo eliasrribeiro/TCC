@@ -966,6 +966,9 @@ for(j in 1:11){
     medidas_smotenc_calculo[[medidas[j]]][i] <- as.numeric(medidas_smotenc[[i]][j])
   }
 }  
+
+
+# Summary medidas de desempenho
 for(i in 1:11){
   print(medidas[i])
   print(summary(medidas_smotenc_calculo[[i]]))
@@ -1082,3 +1085,130 @@ ggplot(dt_neg_pred,
   labs(x = "Método",y="Valor Preditivo Negativo")
 ```
 
+
+## Betas (cálculos EQM e medidas gerais)
+
+### SMOTENC
+
+```{r}
+betas_smotenc <- readRDS("betas_smotenc.rds")
+
+  
+data_smotenc <- 
+  recipe(classi_fin ~., data = data_categorico) %>%
+    step_smotenc(classi_fin,seed=(69)) %>%
+    prep() %>%
+    bake(new_data = NULL)
+
+
+modelo1 <- glm(classi_fin~.,family="binomial",data=data_smotenc)
+betas_originais_smotenc <- modelo1$coefficients
+
+coeficientes <- c("Intercept","racabranca","racaem branco","racaignorado","escolaridademédio","escolaridadesuperior","escolaridadeem branco","escolaridadeignorado","vacinasim","vacinaem branco","vacinaignorado","febresim","febreem branco","febreignorado","tossesim","tosseem branco","tosseignorado","gargantasim","gargantaem branco","gargantaignorado","dispneiasim","dispneiaem branco","dispneiaignorado","desc_respsim","desc_respem branco","desc_respignorado","saturacaosim","saturacaoem branco","saturacaoignroado","diarreiasim","diarreiaem branco","diarreia ignorado","cardiopatiasim","cardiopatiaem branco","cardiopatiaignorado","pneumopatiasim","pneumopatiaem branco","pneumopatiaignorado","renalsim","renalem branco","renalignorado","obesidadesim","obesidadeem branco","obesidadeignorado","idade")
+
+coeficientes_smotenc_calculo <- list()
+
+for(j in 1:45){
+  for(i in 1:1000){
+    coeficientes_smotenc_calculo[[coeficientes[j]]][i] <- as.numeric(betas_smotenc[[i]][j])
+  }
+}  
+
+eqm <- c()
+# calculo EQM
+for(i in 1:45){
+  vies <- mean(coeficientes_smotenc_calculo[[1]]) - betas_originais_smotenc[i]
+  eqm[i] <- var(coeficientes_smotenc_calculo[[1]]) + (vies^2)
+}
+
+# Summary coeficientes de desempenho
+for(i in 1:45){
+  print(coeficientes[i])
+  print(summary(coeficientes_smotenc_calculo[[i]]))
+}
+
+datasummary(All(data.frame(coeficientes_smotenc_calculo))~(media+DP+mediana+q25+q75),
+            data = data.frame(coeficientes_smotenc_calculo), output = 'markdown')
+
+```
+
+### Adasyn
+
+```{r}
+betas_adasyn <- readRDS("betas_adasyn.rds")
+
+data_adasyn <- AdasynClassif(classi_fin ~.,as.data.frame(data_categorico),dist="HEOM")
+
+set.seed(69)
+modelo1 <- glm(classi_fin~.,family="binomial",data=data_adasyn)
+
+betas_originais_adasyn <- modelo1$coefficients
+
+coeficientes <- c("Intercept","racabranca","racaem branco","racaignorado","escolaridademédio","escolaridadesuperior","escolaridadeem branco","escolaridadeignorado","vacinasim","vacinaem branco","vacinaignorado","febresim","febreem branco","febreignorado","tossesim","tosseem branco","tosseignorado","gargantasim","gargantaem branco","gargantaignorado","dispneiasim","dispneiaem branco","dispneiaignorado","desc_respsim","desc_respem branco","desc_respignorado","saturacaosim","saturacaoem branco","saturacaoignroado","diarreiasim","diarreiaem branco","diarreia ignorado","cardiopatiasim","cardiopatiaem branco","cardiopatiaignorado","pneumopatiasim","pneumopatiaem branco","pneumopatiaignorado","renalsim","renalem branco","renalignorado","obesidadesim","obesidadeem branco","obesidadeignorado","idade")
+
+coeficientes_adasyn_calculo <- list()
+
+for(j in 1:45){
+  for(i in 1:1000){
+    coeficientes_adasyn_calculo[[coeficientes[j]]][i] <- as.numeric(betas_adasyn[[i]][j])
+  }
+}  
+
+eqm <- c()
+# calculo EQM
+for(i in 1:45){
+  vies <- mean(coeficientes_adasyn_calculo[[1]]) - betas_originais_adasyn[i]
+  eqm[i] <- var(coeficientes_adasyn_calculo[[1]]) + (vies^2)
+}
+
+# Summary coeficientes de desempenho
+for(i in 1:45){
+  print(coeficientes[i])
+  print(summary(coeficientes_adasyn_calculo[[i]]))
+}
+
+datasummary(All(data.frame(coeficientes_adasyn_calculo))~(media+DP+mediana+q25+q75),
+            data = data.frame(coeficientes_adasyn_calculo), output = 'markdown')
+
+```
+
+
+### smote
+
+```{r}
+betas_smote <- readRDS("betas_smote.rds")
+
+data_smote <- SmoteClassif(classi_fin ~.,as.data.frame(data_categorico),dist="HEOM")
+
+set.seed(69)
+modelo1 <- glm(classi_fin~.,family="binomial",data=data_smote)
+
+betas_originais_smote <- modelo1$coefficients
+
+coeficientes <- c("Intercept","racabranca","racaem branco","racaignorado","escolaridademédio","escolaridadesuperior","escolaridadeem branco","escolaridadeignorado","vacinasim","vacinaem branco","vacinaignorado","febresim","febreem branco","febreignorado","tossesim","tosseem branco","tosseignorado","gargantasim","gargantaem branco","gargantaignorado","dispneiasim","dispneiaem branco","dispneiaignorado","desc_respsim","desc_respem branco","desc_respignorado","saturacaosim","saturacaoem branco","saturacaoignroado","diarreiasim","diarreiaem branco","diarreia ignorado","cardiopatiasim","cardiopatiaem branco","cardiopatiaignorado","pneumopatiasim","pneumopatiaem branco","pneumopatiaignorado","renalsim","renalem branco","renalignorado","obesidadesim","obesidadeem branco","obesidadeignorado","idade")
+
+coeficientes_smote_calculo <- list()
+
+for(j in 1:45){
+  for(i in 1:1000){
+    coeficientes_smote_calculo[[coeficientes[j]]][i] <- as.numeric(betas_smote[[i]][j])
+  }
+}  
+
+eqm <- c()
+# calculo EQM
+for(i in 1:45){
+  vies <- mean(coeficientes_smote_calculo[[1]]) - betas_originais_smote[i]
+  eqm[i] <- var(coeficientes_smote_calculo[[1]]) + (vies^2)
+}
+
+# Summary coeficientes de desempenho
+for(i in 1:45){
+  print(coeficientes[i])
+  print(summary(coeficientes_smote_calculo[[i]]))
+}
+
+datasummary(All(data.frame(coeficientes_smote_calculo))~(media+DP+mediana+q25+q75),
+            data = data.frame(coeficientes_smote_calculo), output = 'markdown')
+
+```
