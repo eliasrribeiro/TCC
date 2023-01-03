@@ -956,7 +956,6 @@ saveRDS(medidas,"medidas_smote.rds")
 ```{r, echo=TRUE}
 medidas_smotenc <- readRDS("medidas_smotenc.rds")
 
-
 medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
 medidas_smotenc_calculo <- list()
 
@@ -1083,6 +1082,496 @@ ggplot(dt_neg_pred,
   scale_fill_viridis_d(option = "inferno", direction = -1) +
   labs(x = "Método",y="Valor Preditivo Negativo")
 ```
+
+### GFráficos boxplot ponto de corte
+
+### Smotenc
+```{r}
+
+data1 <- data.frame("metodo"="Smotenc","ponto_corte"= ((1 - medidas_smotenc_calculo[[medidas[1]]])^2) + ((1 - medidas_smotenc_calculo[[medidas[2]]]))^2)
+data2 <- data.frame("metodo"="Adasyn","ponto_corte"= ((1 - medidas_adasyn_calculo[[medidas[1]]])^2) + ((1 - medidas_adasyn_calculo[[medidas[2]]]))^2)
+data3 <- data.frame("metodo"="Smote","ponto_corte"= ((1 - medidas_smote_calculo[[medidas[1]]])^2) + ((1 - medidas_smote_calculo[[medidas[2]]]))^2)
+
+data_ponto_corte <- rbind(data1,data2,data3)
+
+ggplot(data_ponto_corte,
+       aes(x = metodo, y = ponto_corte, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Método",y="Ponto de corte")
+ggsave("ponto_corte.png")
+```
+
+
+```{r}
+
+```
+
+### Gráficos Boxplot 1% 
+
+```{r}
+medidas_smotenc <- readRDS("medidas_smotenc1.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smotenc_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smotenc_calculo[[medidas[j]]][i] <- as.numeric(medidas_smotenc[[i]][j])
+  }
+}  
+
+medidas_adasyn <- readRDS("medidas_adasyn_1.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_adasyn_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_adasyn_calculo[[medidas[j]]][i] <- as.numeric(medidas_adasyn[[i]][j])
+  }
+}  
+
+medidas_smote <- readRDS("medidas_smote_1.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smote_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smote_calculo[[medidas[j]]][i] <- as.numeric(medidas_smote[[i]][j])
+  }
+}  
+```
+
+## Gráficos Boxplot Sensibilidade 1%
+
+```{r}
+sensibilidade_1 <- data.frame("metodo"="Smotenc","sensibilidade"=medidas_smotenc_calculo[[medidas[1]]])
+sensibilidade_2 <- data.frame("metodo"="Adasyn","sensibilidade"=medidas_adasyn_calculo[[medidas[1]]])
+sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_calculo[[medidas[1]]])
+
+dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
+
+ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1)  +
+  labs(x = "Método",y="Sensibilidade")
+
+ggsave("sens_1.png")
+```
+
+## Gráficos Boxplot Especificidade 1%
+
+```{r}
+especificidade_1 <- data.frame("metodo"="Smotenc","especificidade"=medidas_smotenc_calculo[[medidas[2]]])
+especificidade_2 <- data.frame("metodo"="Adasyn","especificidade"=medidas_adasyn_calculo[[medidas[2]]])
+especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_calculo[[medidas[2]]])
+
+dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
+
+ggplot(dt_especificidade,
+       aes(x = metodo, y = especificidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Método",y="Especificidade")
+
+ggsave("espec_1.png")
+```
+
+
+### Gráficos Boxplot 5% 
+
+```{r}
+medidas_smotenc <- readRDS("medidas_smotenc5.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smotenc_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smotenc_calculo[[medidas[j]]][i] <- as.numeric(medidas_smotenc[[i]][j])
+  }
+}  
+
+medidas_adasyn <- readRDS("medidas_adasyn_5.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_adasyn_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_adasyn_calculo[[medidas[j]]][i] <- as.numeric(medidas_adasyn[[i]][j])
+  }
+}  
+
+medidas_smote <- readRDS("medidas_smote_5.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smote_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smote_calculo[[medidas[j]]][i] <- as.numeric(medidas_smote[[i]][j])
+  }
+}  
+```
+
+## Gráficos Boxplot Sensibilidade 5%
+
+```{r}
+sensibilidade_1 <- data.frame("metodo"="Smotenc","sensibilidade"=medidas_smotenc_calculo[[medidas[1]]])
+sensibilidade_2 <- data.frame("metodo"="Adasyn","sensibilidade"=medidas_adasyn_calculo[[medidas[1]]])
+sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_calculo[[medidas[1]]])
+
+dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
+
+ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1)  +
+  labs(x = "Método",y="Sensibilidade")
+
+ggsave("sens_5.png")
+```
+
+## Gráficos Boxplot Especificidade 5%
+
+```{r}
+especificidade_1 <- data.frame("metodo"="Smotenc","especificidade"=medidas_smotenc_calculo[[medidas[2]]])
+especificidade_2 <- data.frame("metodo"="Adasyn","especificidade"=medidas_adasyn_calculo[[medidas[2]]])
+especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_calculo[[medidas[2]]])
+
+dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
+
+ggplot(dt_especificidade,
+       aes(x = metodo, y = especificidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Método",y="Especificidade")
+ggsave("espec_5.png")
+```
+
+
+### Gráficos Boxplot 25% 
+
+```{r}
+medidas_smotenc <- readRDS("medidas_smotenc25.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smotenc_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smotenc_calculo[[medidas[j]]][i] <- as.numeric(medidas_smotenc[[i]][j])
+  }
+}  
+
+medidas_adasyn <- readRDS("medidas_adasyn_25.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_adasyn_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_adasyn_calculo[[medidas[j]]][i] <- as.numeric(medidas_adasyn[[i]][j])
+  }
+}  
+
+medidas_smote <- readRDS("medidas_smote_25.rds")
+
+medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+medidas_smote_calculo <- list()
+
+for(j in 1:11){
+  for(i in 1:1000){
+    medidas_smote_calculo[[medidas[j]]][i] <- as.numeric(medidas_smote[[i]][j])
+  }
+}  
+```
+
+## Gráficos Boxplot Sensibilidade 25%
+
+```{r}
+sensibilidade_1 <- data.frame("metodo"="Smotenc","sensibilidade"=medidas_smotenc_calculo[[medidas[1]]])
+sensibilidade_2 <- data.frame("metodo"="Adasyn","sensibilidade"=medidas_adasyn_calculo[[medidas[1]]])
+sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_calculo[[medidas[1]]])
+
+dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
+
+ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1)  +
+  labs(x = "Método",y="Sensibilidade")
+ggsave("sens_25.png")
+```
+
+## Gráficos Boxplot Especificidade 25%
+
+```{r}
+especificidade_1 <- data.frame("metodo"="Smotenc","especificidade"=medidas_smotenc_calculo[[medidas[2]]])
+especificidade_2 <- data.frame("metodo"="Adasyn","especificidade"=medidas_adasyn_calculo[[medidas[2]]])
+especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_calculo[[medidas[2]]])
+
+dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
+
+ggplot(dt_especificidade,
+       aes(x = metodo, y = especificidade, fill = metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Método",y="Especificidade")
+ggsave("espec_25.png")
+```
+
+
+## Bloxplot Frequencias
+
+```{r}
+freq_smotenc <- readRDS("frequencias_classi_fn_smotenc.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smotenc_calculo <- list()
+
+grupos <- c("não-covid","covid19")
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smotenc_calculo[[grupos[j]]][i] <- as.numeric(freq_smotenc[[i]][j])
+  }
+}  
+
+ncovid19_smotenc <- data.frame("Metodo"="Smotenc","frequencia" =freq_smotenc_calculo[[1]])
+covid19_smotenc <- data.frame("Metodo"="Smotenc","frequencia"=freq_smotenc_calculo[[2]])
+
+freq_adasyn <- readRDS("frequencias_classi_fn_adasyn.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_adasyn_calculo <- list()
+
+
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_adasyn_calculo[[grupos[j]]][i] <- as.numeric(freq_adasyn[[i]][j])
+  }
+}  
+
+ncovid19_adasyn <- data.frame("Metodo"="Adasyn","frequencia" =freq_adasyn_calculo[[1]])
+covid19_adasyn <- data.frame("Metodo"="Adasyn","frequencia"=freq_adasyn_calculo[[2]])
+
+
+freq_smote <- readRDS("frequencias_classi_fn_smote.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smote_calculo <- list()
+
+
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smote_calculo[[grupos[j]]][i] <- as.numeric(freq_smote[[i]][j])
+  }
+}  
+
+ncovid19_smote <- data.frame("Metodo"="Smote","frequencia" =freq_smote_calculo[[1]])
+covid19_smote <- data.frame("Metodo"="Smote","frequencia"=freq_smote_calculo[[2]])
+
+freq_ncovid <- rbind(ncovid19_smotenc,ncovid19_adasyn,ncovid19_smote)
+
+ggplot(freq_ncovid,
+       aes(x = Metodo, y = frequencia, fill = Metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Grupos",y="Frequências Não Covid-19")
+ggsave("frequencias_ncovid.png")
+
+freq_covid <- rbind(covid19_smotenc,covid19_adasyn,covid19_smote)
+
+ggplot(freq_covid,
+       aes(x = Metodo, y = frequencia, fill = Metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Grupos",y="FrequênciasCovid-19")
+ggsave("frequencias_covid.png")
+
+
+```
+
+## Bloxplot Frequencias 1%
+
+```{r}
+freq_smotenc <- readRDS("frequencias_classi_fn_smotenc.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smotenc_calculo <- list()
+
+grupos <- c("não-covid","covid19")
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smotenc_calculo[[grupos[j]]][i] <- as.numeric(freq_smotenc[[i]][j])
+  }
+}  
+
+ncovid19_smotenc <- data.frame("Simulacao"="Normal","frequencia" =freq_smotenc_calculo[[1]])
+covid19_smotenc <- data.frame("Simulacao"="Normal","frequencia"=freq_smotenc_calculo[[2]])
+
+freq_smotenc <- readRDS("frequencias_classi_fn_smotenc1.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smotenc_calculo <- list()
+
+grupos <- c("não-covid","covid19")
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smotenc_calculo[[grupos[j]]][i] <- as.numeric(freq_smotenc[[i]][j])
+  }
+}  
+
+ncovid19_smotenc1 <- data.frame("Simulacao"="1 %","frequencia" =freq_smotenc_calculo[[1]])
+covid19_smotenc1 <- data.frame("Simulacao"="1 %","frequencia"=freq_smotenc_calculo[[2]])
+
+freq_smotenc <- readRDS("frequencias_classi_fn_smotenc5.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smotenc_calculo <- list()
+
+grupos <- c("não-covid","covid19")
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smotenc_calculo[[grupos[j]]][i] <- as.numeric(freq_smotenc[[i]][j])
+  }
+}  
+
+ncovid19_smotenc5 <- data.frame("Simulacao"="5 %","frequencia" =freq_smotenc_calculo[[1]])
+covid19_smotenc5 <- data.frame("Simulacao"="5 %","frequencia"=freq_smotenc_calculo[[2]])
+
+freq_smotenc <- readRDS("frequencias_classi_fn_smotenc25.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smotenc_calculo <- list()
+
+grupos <- c("não-covid","covid19")
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smotenc_calculo[[grupos[j]]][i] <- as.numeric(freq_smotenc[[i]][j])
+  }
+}  
+
+ncovid19_smotenc25 <- data.frame("Simulacao"="25 %","frequencia" =freq_smotenc_calculo[[1]])
+covid19_smotenc25 <- data.frame("Simulacao"="25 %","frequencia"=freq_smotenc_calculo[[2]])
+
+
+freq_ncovid <- rbind(ncovid19_smotenc,ncovid19_smotenc1,ncovid19_smotenc5,ncovid19_smotenc25)
+
+ggplot(ncovid19_smotenc25,
+       aes(x = Simulacao, y = frequencia, fill = Simulacao)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Simulação",y="Frequências Não Covid-19")
+ggsave("frequencias_ncovid25.png")
+
+
+freq_covid <- rbind(covid19_smotenc,covid19_adasyn,covid19_smote)
+
+ggplot(covid19_smotenc,
+       aes(x = Simulacao, y = frequencia, fill = Simulacao)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Simulação",y="Frequências Covid-19")
+ggsave("frequencias_covidnormal.png")
+
+``` 
+
+## Bloxplot Frequencias 5%
+
+```{r}
+freq_smotenc <- readRDS("frequencias_classi_fn_smotenc5.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smotenc_calculo <- list()
+
+grupos <- c("não-covid","covid19")
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smotenc_calculo[[grupos[j]]][i] <- as.numeric(freq_smotenc[[i]][j])
+  }
+}  
+
+ncovid19_smotenc <- data.frame("Metodo"="Smotenc","frequencia" =freq_smotenc_calculo[[1]])
+covid19_smotenc <- data.frame("Metodo"="Smotenc","frequencia"=freq_smotenc_calculo[[2]])
+
+freq_adasyn <- readRDS("frequencias_classi_fn_adasyn_5.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_adasyn_calculo <- list()
+
+
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_adasyn_calculo[[grupos[j]]][i] <- as.numeric(freq_adasyn[[i]][j])
+  }
+}  
+
+ncovid19_adasyn <- data.frame("Metodo"="Adasyn","frequencia" =freq_adasyn_calculo[[1]])
+covid19_adasyn <- data.frame("Metodo"="Adasyn","frequencia"=freq_adasyn_calculo[[2]])
+
+
+freq_smote <- readRDS("frequencias_classi_fn_smote_5.rds")
+
+# medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
+freq_smote_calculo <- list()
+
+
+for(j in 1:2){
+  for(i in 1:1000){
+    freq_smote_calculo[[grupos[j]]][i] <- as.numeric(freq_smote[[i]][j])
+  }
+}  
+
+ncovid19_smote <- data.frame("Metodo"="Smote","frequencia" =freq_smote_calculo[[1]])
+covid19_smote <- data.frame("Metodo"="Smote","frequencia"=freq_smote_calculo[[2]])
+
+freq_ncovid <- rbind(ncovid19_smotenc,ncovid19_adasyn,ncovid19_smote)
+
+ggplot(freq_ncovid,
+       aes(x = Metodo, y = frequencia, fill = Metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Grupos",y="Frequências Não Covid-19")
+ggsave("frequencias_ncovid5.png")
+
+freq_covid <- rbind(covid19_smotenc,covid19_adasyn,covid19_smote)
+
+ggplot(freq_covid,
+       aes(x = Metodo, y = frequencia, fill = Metodo)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  labs(x = "Grupos",y="FrequênciasCovid-19")
+ggsave("frequencias_covid5.png")
+
+``` 
 
 
 ## Betas (cálculos EQM e medidas gerais)
