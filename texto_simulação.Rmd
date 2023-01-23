@@ -1,0 +1,101 @@
+---
+title: "texto simulação"
+output: html_document
+date: "2023-01-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Reamostragem dos dados com variáveis categóricas
+
+Como dito anteriormente, a maioria dos métodos de reamostragem foram baseados em dados com variáveis contínuas. No cenário real, existe diversos tipos de dados, e dentre eles inúmeros dados que utilizam informações categóricas. Pensando em tal problemática, (criador do smote) desenvolveu o SMOTE-N e o SMOTE-NC para realizar o método de reamostragem SMOTE porém lidando com dados categóricos. O mesmo ja havia proposto melhorias nos métodos pois eles não apresentaram resultados positivos.
+
+Com o desenvolvimento de novas técnicas e novas formas de calcular distâncias entre uma observação e outra, foram desenvolvidos as técnicas Overlap e HEOM que calculam a distância entre observações categóricas. O xxx (desenvolvedor do UBL) desenvolveu um pacote no R chamado UBL, neste, é possível trocar a forma de calcular as distâncias entre as observações para o cálculo do vizinhos mais próximos nos métodos de reamostragem smote, adasyn e links de tomek, ateriormente feitos apenas para variáveis contínuas. Desta forma, é possível selecionar a distância Overlap (utilizada nos casos em que só tenham variáveis categóricas), a distância HEOM (utilizada nos casos em que se se tenham variáveis categóricas e contínuas) e por default, a distância euclidiana (utilizada para variáveis contínuas).
+
+Como dito anteriorment, o SMOTE-NC foi proposto inicialmente por xxxx, no pacote THEMIS existe uma aplicação desse método desenvolvida para as mesmas finalidades, a única diferença é que é utilizado a distância de GOWER (referenciar seção), que calcula a distância entre observações categóricas.
+
+Assim, reduzimos os métodos de reamostragem ao smote, adasyn e links de tomek com distância heom e smote-nc com distância de gower. Como observamos na seção anterior o método links de tomek não teve resultados positivos devido a sua metodologia, dessa forma o mesmo não será considerado para avaliação do melhor método para a nossa problemática do desbalanceamento das classes de SRAG.
+
+Como as variáveis dos nossos dados são variáveis categóricas, o desempenho dos métodos não podem ser avaliados graficamente, desta forma, faz-se o uso de outras maneiras para podermos avaliar o método que melhor se adequa aos nossos dados. Como queremos encontrar um método que melhor reamostre a nossa classe para encontrarmos uma melhor predição na classe desbalanceada, aplicamos um modelo de Regressão Logística para avaliar qual ajuste obteve a melhor perfomace, e consequentemente podemos analisar qual método melhorou o ajuste do modelo.
+
+Primeiro, segmentamos os dados em amostra treino e teste. Em seguida, aplicamos os métodos de reamostragem na amostras de treino e por fim ajustamos os modelos e validamos na amostra de teste. Após encontrarmos o melhor ponto de corte, as medidas de desemepenho do modelo obtidas foram:  
+
+
+Podemos observar que os métodos melhoraram o ajuste do modelo proposto, porém queremos avaliar os métodos de uma forma mais eficiente. (porque mesmo??). Na seção posterior propomos um estudo de simulações para podermos avaliar os resultados dos métodos e identificarmos o que obteve o melhor desempenho.
+
+### Estudos de simulações
+
+Nesta seção, apresentamos um estudo de simulações com a finalidade de identificar o método de reamostragem que se adequa melhor aos nosos dados em diferentes cenários. Proposto por John Von Neumann e Stanislaw Ulam (referenciar), o método de simulações Monte Carlo é uma técnica matematica usada para prever resultados possíveis de um evento.
+
+Como descrito na seção "Os dados", nossos dados são compostos majoritariamente por variáveis categóricas, desta forma, o estudo de simulações será conduzido apenas com os métodos de reamostragem que lidam com variáveis categóricas e numéricas, os métodos Smote-NC que utiliza a distância de Gower para o cálculo da distância dos vizinhos mais próximos de variáveis categóricas, e os métodos Adasyn e Smote que utilizam a distância HEOM.
+
+
+Para podermos avaliar a eficiência dos métodos, será ajustado um modelo de predição nos dados para prever a classe desbalanceada que identifica os casos de síndrome respiratória aguda gravde de COVID-19 e de não COVID-19. Desta forma, os métodos serão avaliados conforme a performance das medidas de desempenho do modelo de predição (referenciar seção) dentre as simulações.
+
+As medidas de desempenho consideradas foram as de sensibilidade e especificidade, pois elas influenciam diretamente no desempenho da predição nas classes. De forma a encontrar as melhores medidas de sensibilidade e especificidade, o ponto de corte foi calculado da seguinte forma: 
+
+$$\text{melhor ponto de corte} = (1-sensibilidade)^2 + (1-especificidade)^2$$
+
+Para o estudo de simulações vamos utilizar o modelo de Regressão Logístico Multinomial(referenciar) para geração dos dados categóricos baseadas nas variáveis do nosso banco de dados de acordo com as probabilidades das respectivas classes de cada variável. Para a simulação da variável contínua idade, identificamos uma distribuição Gama Generalizado, desta forma foram simulados valores de uma gama generalizada com os parâmetros x x x x.
+
+Com base dos dados originais, foram geradas 1000 amostras de tamanho igual, 21.366 observações. Após a geração de todas as variáveis explicativas do modelo, foram utilizados os estimadores do modelo de Regressão Logístico para prever a classe SRAG COVID-19 e não COVID-19 dos dados simulados. Os estimadores estão descritos na tabela xxx.
+
+O primeiro cenário considerado será o cenário dos dados originais, com desbalanceamento de 10.4\% na classe não COVID-19 E 89.6\% COVID-19, ou seja aproximadamente 10% para a classe minoritária. Para podermos identificar qual método é o melhor para diferentes proporções de desbalanceamento, a simulação foi repetida para diferentes cenários de frequências da classe minoritária não COVID-19, 1\%, 5\% e 25\%.Lembrando que 10\% ja é a proporção dos dados originais. As frequências das classes para cada cenário se encontram na tabela xxxx.
+
+
+#### Cenário 1 
+
+O cenário 1 é o mesmo cenário de desbalanceamento dos dados originais, 10.4\% na classe não COVID-19 E 89.6\% COVID-19. Após a simulação, os dados simulados foram segmentados em amostras treino e teste. Em seguida, foram aplicados os métodos de reamostragem nas amostras treino e por fim ajustado um novo modelo de regressão logística.
+
+As medidas de desempenho sensibilidade e especificidade foram calculadas em cada simulação, ou seja, para cada cada cenário foram calculadas 1000 medidas de sensibilidade e 1000 medidas de especificidade. Podemos observar sua distribuição no gráfico XX. 
+
+
+--------- GRÁFICO ------
+
+Como podemos observar, os métodos xxxx
+
+
+#### Cenário 2
+
+O cenário 2 é o cenário em que a classe não COVID-19 representa 1% dos dados. Desta forma, após os dados serem simulados, removemos aelatoriamente observações da classe minoritária até que a classe de 1% seja atingida e após foram segmentados em amostras treino e teste. Em seguida, foram aplicados os métodos de reamostragem nas amostras treino e por fim ajustado um novo modelo de regressão logística.
+
+As medidas de desempenho sensibilidade e especificidade foram calculadas em cada simulação, ou seja, para cada cada cenário foram calculadas 1000 medidas de sensibilidade e 1000 medidas de especificidade. Podemos observar sua distribuição no gráfico XX. 
+
+
+--------- GRÁFICO ------
+
+Como podemos observar, os métodos xxxx
+
+
+#### Cenário 3
+
+O cenário 3 é o cenário em que a classe não COVID-19 representa 5% dos dados. Desta forma, após os dados serem simulados, removemos aelatoriamente observações da classe minoritária até que a classe de 5% seja atingida e após foram segmentados em amostras treino e teste. Em seguida, foram aplicados os métodos de reamostragem nas amostras treino e por fim ajustado um novo modelo de regressão logística.
+
+As medidas de desempenho sensibilidade e especificidade foram calculadas em cada simulação, ou seja, para cada cada cenário foram calculadas 1000 medidas de sensibilidade e 1000 medidas de especificidade. Podemos observar sua distribuição no gráfico XX. 
+
+
+--------- GRÁFICO ------
+
+Como podemos observar, os métodos xxxx
+
+
+
+
+#### Cenário 4
+
+O cenário 4 é o cenário em que a classe não COVID-19 representa 25% dos dados. Desta forma, após os dados serem simulados, removemos aelatoriamente observações da classe majoritária até que a proporção de 25% na classe minoritária seja atingida e após foram segmentados em amostras treino e teste. Em seguida, foram aplicados os métodos de reamostragem nas amostras treino e por fim ajustado um novo modelo de regressão logística.
+
+As medidas de desempenho sensibilidade e especificidade foram calculadas em cada simulação, ou seja, para cada cada cenário foram calculadas 1000 medidas de sensibilidade e 1000 medidas de especificidade. Podemos observar sua distribuição no gráfico XX. 
+
+
+--------- GRÁFICO ------
+
+Como podemos observar, os métodos xxxx
+
+
+## Conclusões
+
+
+
