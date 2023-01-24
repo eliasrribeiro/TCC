@@ -493,6 +493,85 @@ for(i in 1:1000){
 saveRDS(betas,"betas_semreamostragem.rds")
 ```
 
+
+## Regressão logística com dados originais com tres reamostragens
+
+```{r}
+set.seed(149)
+
+data3$classi_fin <- factor(data3$classi_fin,levels=c("COVID-19","Não COVID-19"))
+
+data_split <- initial_split(
+    data3, 
+    prob = 0.7
+  )
+data_train <- training(data_split)
+  
+data_test <- testing(data_split)
+  
+  # modelo estimado
+  
+data_train_smotenc <-
+    recipe(classi_fin ~., data = data_train) %>%
+    step_smotenc(classi_fin,seed=(i+69)) %>%
+    prep() %>%
+    bake(new_data = NULL)
+  
+model_sim <- glm(classi_fin ~.,data=data_train,family = "binomial")
+  
+treshold <- 0.5
+  
+data_test$pred  <- predict(model_sim,data_test,type="response")
+  
+t <-
+    threshold_perf(data_test, classi_fin, pred, thresholds = seq(0, 1, by = 0.0025)) %>%
+    filter(.metric == "distance") %>%
+    filter(.estimate == max(.estimate)) %>%
+    pull(.threshold)
+  
+data_test <- data_test %>% 
+    mutate(new_preds = factor(ifelse(pred >= t,"Não COVID-19","COVID-19")))
+  
+confusionMatrix(as.factor(data_test$new_preds), data_test$classi_fin)
+
+
+
+data_categorico_adasyn <- AdasynClassif(classi_fin ~.,as.data.frame(data_train),dist="HEOM")
+
+model_sim <- glm(classi_fin ~.,data=data_categorico_adasyn,family = "binomial")
+  
+data_test$pred  <- predict(model_sim,data_test,type="response")
+  
+t <-
+    threshold_perf(data_test, classi_fin, pred, thresholds = seq(0, 1, by = 0.0025)) %>%
+    filter(.metric == "distance") %>%
+    filter(.estimate == max(.estimate)) %>%
+    pull(.threshold)
+  
+data_test <- data_test %>% 
+    mutate(new_preds = factor(ifelse(pred >= t,"Não COVID-19","COVID-19")))
+  
+confusionMatrix(as.factor(data_test$new_preds), data_test$classi_fin)
+
+data_categorico_smote <- SmoteClassif(classi_fin ~.,as.data.frame(data_train),dist="HEOM")
+
+model_sim <- glm(classi_fin ~.,data=data_categorico_smote,family = "binomial")
+  
+data_test$pred  <- predict(model_sim,data_test,type="response")
+  
+t <-
+    threshold_perf(data_test, classi_fin, pred, thresholds = seq(0, 1, by = 0.0025)) %>%
+    filter(.metric == "distance") %>%
+    filter(.estimate == max(.estimate)) %>%
+    pull(.threshold)
+  
+data_test <- data_test %>% 
+    mutate(new_preds = factor(ifelse(pred >= t,"Não COVID-19","COVID-19")))
+  
+confusionMatrix(as.factor(data_test$new_preds), data_test$classi_fin)
+```
+
+
 ## Com SMOTE NC
 
 ```{r}
@@ -1020,12 +1099,12 @@ sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_cal
 
 dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
 
-ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+g1 <- ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1)  +
-  labs(x = "Método",y="Sensibilidade")
+  labs(x = "Método",y="Sensibilidade") 
 ```
 
 ## Gráficos Boxplot Especificidade
@@ -1037,7 +1116,7 @@ especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_c
 
 dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
 
-ggplot(dt_especificidade,
+g2 <- ggplot(dt_especificidade,
        aes(x = metodo, y = especificidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
@@ -1056,7 +1135,7 @@ pos_pred_3 <- data.frame("metodo"="Smote","pos_pred"=medidas_smote_calculo[[medi
 
 dt_pos_pred <- data.frame(rbind(pos_pred_1,pos_pred_2,pos_pred_3))
 
-ggplot(dt_pos_pred,
+g3 <- ggplot(dt_pos_pred,
        aes(x = metodo, y = pos_pred, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
@@ -1074,7 +1153,7 @@ neg_pred_3 <- data.frame("metodo"="Smote","neg_pred"=medidas_smote_calculo[[medi
 
 dt_neg_pred <- data.frame(rbind(neg_pred_1,neg_pred_2,neg_pred_3))
 
-ggplot(dt_neg_pred,
+g4 <- ggplot(dt_neg_pred,
        aes(x = metodo, y = neg_pred, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
@@ -1094,14 +1173,14 @@ data3 <- data.frame("metodo"="Smote","ponto_corte"= ((1 - medidas_smote_calculo[
 
 data_ponto_corte <- rbind(data1,data2,data3)
 
-ggplot(data_ponto_corte,
+g3 <- ggplot(data_ponto_corte,
        aes(x = metodo, y = ponto_corte, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1) +
   labs(x = "Método",y="Ponto de corte")
-ggsave("ponto_corte.png")
+#ggsave("ponto_corte.png")
 ```
 
 
@@ -1155,14 +1234,14 @@ sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_cal
 
 dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
 
-ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+g3 <- ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1)  +
   labs(x = "Método",y="Sensibilidade")
 
-ggsave("sens_1.png")
+#ggsave("sens_1.png")
 ```
 
 ## Gráficos Boxplot Especificidade 1%
@@ -1174,7 +1253,7 @@ especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_c
 
 dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
 
-ggplot(dt_especificidade,
+g4 <- ggplot(dt_especificidade,
        aes(x = metodo, y = especificidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
@@ -1182,13 +1261,13 @@ ggplot(dt_especificidade,
   scale_fill_viridis_d(option = "inferno", direction = -1) +
   labs(x = "Método",y="Especificidade")
 
-ggsave("espec_1.png")
+#ggsave("espec_1.png")
 ```
 
 
 ### Gráficos Boxplot 5% 
 
-```{r}
+```{r}  
 medidas_smotenc <- readRDS("medidas_smotenc5.rds")
 
 medidas <- c("sensibilidade","especificidade","pos_pred","neg_pred","precisao","recall","f1","prevalence","taxa_det","det_prevalencia","acuracia_balanceada")
@@ -1232,14 +1311,14 @@ sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_cal
 
 dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
 
-ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+g5 <- ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1)  +
   labs(x = "Método",y="Sensibilidade")
 
-ggsave("sens_5.png")
+#ggsave("sens_5.png")
 ```
 
 ## Gráficos Boxplot Especificidade 5%
@@ -1251,14 +1330,14 @@ especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_c
 
 dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
 
-ggplot(dt_especificidade,
+g6 <- ggplot(dt_especificidade,
        aes(x = metodo, y = especificidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1) +
   labs(x = "Método",y="Especificidade")
-ggsave("espec_5.png")
+#ggsave("espec_5.png")
 ```
 
 
@@ -1308,13 +1387,13 @@ sensibilidade_3 <- data.frame("metodo"="Smote","sensibilidade"=medidas_smote_cal
 
 dt_sensibilidade <- data.frame(rbind(sensibilidade_1,sensibilidade_2,sensibilidade_3))
 
-ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
+g7 <- ggplot(dt_sensibilidade, aes(x = metodo, y = sensibilidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1)  +
   labs(x = "Método",y="Sensibilidade")
-ggsave("sens_25.png")
+#ggsave("sens_25.png")
 ```
 
 ## Gráficos Boxplot Especificidade 25%
@@ -1326,14 +1405,14 @@ especificidade_3 <- data.frame("metodo"="Smote","especificidade"=medidas_smote_c
 
 dt_especificidade <- data.frame(rbind(especificidade_1,especificidade_2,especificidade_3))
 
-ggplot(dt_especificidade,
+g8 <- ggplot(dt_especificidade,
        aes(x = metodo, y = especificidade, fill = metodo)) +
   geom_boxplot() +
   theme_minimal() +
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1) +
   labs(x = "Método",y="Especificidade")
-ggsave("espec_25.png")
+#ggsave("espec_25.png")
 ```
 
 
@@ -1395,7 +1474,7 @@ ggplot(freq_ncovid,
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1) +
   labs(x = "Grupos",y="Frequências Não Covid-19")
-ggsave("frequencias_ncovid.png")
+#ggsave("frequencias_ncovid.png")
 
 freq_covid <- rbind(covid19_smotenc,covid19_adasyn,covid19_smote)
 
@@ -1406,7 +1485,7 @@ ggplot(freq_covid,
   theme(legend.position = "none") +
   scale_fill_viridis_d(option = "inferno", direction = -1) +
   labs(x = "Grupos",y="FrequênciasCovid-19")
-ggsave("frequencias_covid.png")
+#ggsave("frequencias_covid.png")
 
 
 ```
@@ -2177,7 +2256,7 @@ for(i in 1:1000){
   raca_sim <-
     rMultinom(rbind(c(as.numeric(
       with(data_categorico, ctable(raca, classi_fin, prop = "c"))$proportions[1:4, 3]
-    ))), 21366)
+      ))), 21366)
   esc_sim <-
     rMultinom(rbind(c(as.numeric(
       with(data_categorico, ctable(escolaridade, classi_fin, prop = "c"))$proportions[1:5, 3]
